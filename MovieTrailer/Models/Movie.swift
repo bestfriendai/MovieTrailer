@@ -39,7 +39,62 @@ struct Movie: Codable, Identifiable, Hashable {
         case originalLanguage = "original_language"
         case originalTitle = "original_title"
         case video
+        // Note: media_type is ignored (only present in trending endpoint)
     }
+    
+    // Custom decoder to handle optional fields gracefully
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(Int.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview) ?? ""
+        posterPath = try container.decodeIfPresent(String.self, forKey: .posterPath)
+        backdropPath = try container.decodeIfPresent(String.self, forKey: .backdropPath)
+        releaseDate = try container.decodeIfPresent(String.self, forKey: .releaseDate)
+        voteAverage = try container.decodeIfPresent(Double.self, forKey: .voteAverage) ?? 0.0
+        voteCount = try container.decodeIfPresent(Int.self, forKey: .voteCount) ?? 0
+        popularity = try container.decodeIfPresent(Double.self, forKey: .popularity) ?? 0.0
+        genreIds = try container.decodeIfPresent([Int].self, forKey: .genreIds) ?? []
+        adult = try container.decodeIfPresent(Bool.self, forKey: .adult) ?? false
+        originalLanguage = try container.decodeIfPresent(String.self, forKey: .originalLanguage) ?? ""
+        originalTitle = try container.decodeIfPresent(String.self, forKey: .originalTitle) ?? title
+        video = try container.decodeIfPresent(Bool.self, forKey: .video) ?? false
+    }
+    
+    // Memberwise initializer for creating instances manually (e.g., previews)
+    init(
+        id: Int,
+        title: String,
+        overview: String,
+        posterPath: String?,
+        backdropPath: String?,
+        releaseDate: String?,
+        voteAverage: Double,
+        voteCount: Int,
+        popularity: Double,
+        genreIds: [Int],
+        adult: Bool,
+        originalLanguage: String,
+        originalTitle: String,
+        video: Bool
+    ) {
+        self.id = id
+        self.title = title
+        self.overview = overview
+        self.posterPath = posterPath
+        self.backdropPath = backdropPath
+        self.releaseDate = releaseDate
+        self.voteAverage = voteAverage
+        self.voteCount = voteCount
+        self.popularity = popularity
+        self.genreIds = genreIds
+        self.adult = adult
+        self.originalLanguage = originalLanguage
+        self.originalTitle = originalTitle
+        self.video = video
+    }
+
     
     // MARK: - Computed Properties
     

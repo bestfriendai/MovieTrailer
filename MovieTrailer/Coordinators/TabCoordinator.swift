@@ -76,6 +76,27 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
         self.tmdbService = tmdbService
         self.watchlistManager = watchlistManager
         self.liveActivityManager = liveActivityManager
+        
+        // Initialize child coordinators immediately
+        self.discoverCoordinator = DiscoverCoordinator(
+            tmdbService: tmdbService,
+            watchlistManager: watchlistManager
+        )
+        
+        self.tonightCoordinator = TonightCoordinator(
+            tmdbService: tmdbService,
+            watchlistManager: watchlistManager
+        )
+        
+        self.searchCoordinator = SearchCoordinator(
+            tmdbService: tmdbService,
+            watchlistManager: watchlistManager
+        )
+        
+        self.watchlistCoordinator = WatchlistCoordinator(
+            watchlistManager: watchlistManager,
+            liveActivityManager: liveActivityManager
+        )
     }
     
     // MARK: - Coordinator Protocol
@@ -119,43 +140,15 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
     }
     
     func start() {
-        // Initialize child coordinators
-        setupChildCoordinators()
-    }
-    
-    func finish() {
-        removeAllChildren()
-    }
-    
-    // MARK: - Private Methods
-    
-    private func setupChildCoordinators() {
-        // Create child coordinators
-        discoverCoordinator = DiscoverCoordinator(
-            tmdbService: tmdbService,
-            watchlistManager: watchlistManager
-        )
-        
-        tonightCoordinator = TonightCoordinator(
-            tmdbService: tmdbService,
-            watchlistManager: watchlistManager
-        )
-        
-        searchCoordinator = SearchCoordinator(
-            tmdbService: tmdbService,
-            watchlistManager: watchlistManager
-        )
-        
-        watchlistCoordinator = WatchlistCoordinator(
-            watchlistManager: watchlistManager,
-            liveActivityManager: liveActivityManager
-        )
-        
-        // Add to child coordinators array
+        // Add coordinators to child array
         if let discover = discoverCoordinator { addChild(discover) }
         if let tonight = tonightCoordinator { addChild(tonight) }
         if let search = searchCoordinator { addChild(search) }
         if let watchlist = watchlistCoordinator { addChild(watchlist) }
+    }
+    
+    func finish() {
+        removeAllChildren()
     }
     
     // MARK: - Tab Views

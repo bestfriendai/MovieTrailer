@@ -22,7 +22,7 @@ actor TMDBService {
         
         // Configure JSON decoder
         self.decoder = JSONDecoder()
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // Note: NOT using .convertFromSnakeCase because we have custom CodingKeys
     }
     
     // MARK: - Custom URLSession with Caching

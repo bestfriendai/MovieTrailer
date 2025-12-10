@@ -36,7 +36,7 @@ enum TMDBEndpoint {
     private var path: String {
         switch self {
         case .trending:
-            return "/trending/movie/week"
+            return "/trending/movie/day"
         case .popular:
             return "/movie/popular"
         case .topRated:
