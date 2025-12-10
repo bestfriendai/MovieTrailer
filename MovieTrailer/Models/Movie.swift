@@ -128,6 +128,18 @@ struct Movie: Codable, Identifiable, Hashable {
     var ratingPercentage: Int {
         Int((voteAverage / 10.0) * 100)
     }
+    
+    // MARK: - Hashable Implementation
+    
+    /// Custom hash implementation using only ID for uniqueness
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    /// Custom equality check using only ID
+    static func == (lhs: Movie, rhs: Movie) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 // MARK: - Preview Helpers
