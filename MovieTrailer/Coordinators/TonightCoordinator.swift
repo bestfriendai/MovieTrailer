@@ -49,31 +49,13 @@ final class TonightCoordinator: ObservableObject, NavigationCoordinator {
         navigate(to: movie)
     }
     
-    // MARK: - Placeholder
+    // MARK: - View
     
     private func placeholderView() -> some View {
-        VStack(spacing: 20) {
-            Image(systemName: "star.circle.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.orange, .pink],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            Text("What to Watch Tonight")
-                .font(.title.bold())
-                .multilineTextAlignment(.center)
-            
-            Text("Personalized recommendations just for you")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemBackground))
-        .navigationTitle("Tonight")
+        let viewModel = TonightViewModel(
+            tmdbService: tmdbService,
+            watchlistManager: watchlistManager
+        )
+        return TonightView(viewModel: viewModel)
     }
 }
