@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// Coordinator for the Tonight recommendation tab
 @MainActor
@@ -30,7 +31,10 @@ final class TonightCoordinator: ObservableObject, NavigationCoordinator {
     // MARK: - Coordinator Protocol
     
     var body: some View {
-        NavigationStack(path: $navigationPath) {
+        NavigationStack(path: Binding(
+            get: { self.navigationPath },
+            set: { self.navigationPath = $0 }
+        )) {
             placeholderView()
         }
     }

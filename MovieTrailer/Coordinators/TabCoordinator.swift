@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// Coordinator for managing the main tab bar
 @MainActor
@@ -80,7 +81,10 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
     // MARK: - Coordinator Protocol
     
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: Binding(
+            get: { self.selectedTab },
+            set: { self.selectedTab = $0 }
+        )) {
             // Discover Tab
             discoverTab()
                 .tabItem {
@@ -110,7 +114,7 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
                 .tag(Tab.watchlist.rawValue)
         }
         .onAppear {
-            start()
+            self.start()
         }
     }
     

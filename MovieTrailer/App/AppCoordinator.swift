@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// Root coordinator for the entire app
 @MainActor
@@ -30,12 +31,21 @@ final class AppCoordinator: ObservableObject {
     
     init(
         tmdbService: TMDBService = .shared,
-        watchlistManager: WatchlistManager = WatchlistManager(),
+        watchlistManager: WatchlistManager,
         liveActivityManager: LiveActivityManager = .shared
     ) {
         self.tmdbService = tmdbService
         self.watchlistManager = watchlistManager
         self.liveActivityManager = liveActivityManager
+    }
+    
+    /// Convenience initializer with default dependencies
+    convenience init() {
+        self.init(
+            tmdbService: .shared,
+            watchlistManager: WatchlistManager(),
+            liveActivityManager: .shared
+        )
     }
     
     // MARK: - Public Methods

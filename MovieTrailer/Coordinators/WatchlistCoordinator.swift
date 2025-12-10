@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// Coordinator for the Watchlist tab
 @MainActor
@@ -34,7 +35,10 @@ final class WatchlistCoordinator: ObservableObject, NavigationCoordinator {
     // MARK: - Coordinator Protocol
     
     var body: some View {
-        NavigationStack(path: $navigationPath) {
+        NavigationStack(path: Binding(
+            get: { self.navigationPath },
+            set: { self.navigationPath = $0 }
+        )) {
             placeholderView()
         }
     }
@@ -88,7 +92,7 @@ final class WatchlistCoordinator: ObservableObject, NavigationCoordinator {
             if !watchlistManager.isEmpty {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        shareWatchlist()
+                        self.shareWatchlist()
                     } label: {
                         Image(systemName: "square.and.arrow.up")
                     }
