@@ -9,11 +9,15 @@ import SwiftUI
 
 @main
 struct MovieTrailerApp: App {
+    
+    @StateObject private var appCoordinator = AppCoordinator()
+    
     var body: some Scene {
         WindowGroup {
-            Text("MovieTrailer")
-                .font(.largeTitle)
-                .bold()
+            appCoordinator.start()
+                .onOpenURL { url in
+                    appCoordinator.handleDeepLink(url)
+                }
         }
     }
 }
