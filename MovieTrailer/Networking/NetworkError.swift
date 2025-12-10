@@ -134,10 +134,10 @@ enum NetworkError: LocalizedError {
     /// Whether the error is recoverable by retrying
     var isRetryable: Bool {
         switch self {
-        case .networkError, .serverError, .httpError(let code):
-            return code >= 500 || code == 429
-        case .rateLimitExceeded:
+        case .networkError, .serverError, .rateLimitExceeded:
             return true
+        case .httpError(let code):
+            return code >= 500 || code == 429
         default:
             return false
         }
