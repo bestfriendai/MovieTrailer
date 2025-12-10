@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 /// Manages watchlist persistence using FileManager and AppStorage
 @MainActor

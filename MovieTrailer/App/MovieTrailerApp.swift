@@ -2,6 +2,18 @@
 //  MovieTrailerApp.swift
 //  MovieTrailer
 //
-//  Created by Silverius Daniel Wijono on 09/12/25.
+//  Created by Daniel Wijono on 10/12/2025.
 //
 
+import SwiftUI
+
+@main
+struct MovieTrailerApp: App {
+    var body: some Scene {
+        WindowGroup {
+            Text("MovieTrailer")
+                .font(.largeTitle)
+                .bold()
+        }
+    }
+}
