@@ -49,30 +49,13 @@ final class DiscoverCoordinator: ObservableObject, NavigationCoordinator {
         navigate(to: movie)
     }
     
-    // MARK: - Placeholder
+    // MARK: - View
     
     private func placeholderView() -> some View {
-        VStack(spacing: 20) {
-            Image(systemName: "film.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.blue, .purple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            Text("Discover")
-                .font(.title.bold())
-            
-            Text("Trending, Popular & Top Rated Movies")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemBackground))
-        .navigationTitle("Discover")
+        let viewModel = DiscoverViewModel(
+            tmdbService: tmdbService,
+            watchlistManager: watchlistManager
+        )
+        return DiscoverView(viewModel: viewModel)
     }
 }
