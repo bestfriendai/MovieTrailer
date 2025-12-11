@@ -112,11 +112,24 @@ struct WatchlistItem: Codable, Identifiable, Hashable {
 // MARK: - Sorting
 
 extension WatchlistItem {
-    enum SortOption {
+    enum SortOption: CaseIterable {
         case dateAdded
         case title
         case rating
         case releaseDate
+        
+        var displayName: String {
+            switch self {
+            case .dateAdded:
+                return "Date Added"
+            case .title:
+                return "Title"
+            case .rating:
+                return "Rating"
+            case .releaseDate:
+                return "Release Date"
+            }
+        }
         
         var comparator: (WatchlistItem, WatchlistItem) -> Bool {
             switch self {
