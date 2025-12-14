@@ -14,6 +14,7 @@ enum TMDBEndpoint {
     case topRated(page: Int)
     case search(query: String, page: Int)
     case movieDetails(id: Int)
+    case videos(movieId: Int)
     case genres
     
     // MARK: - Configuration
@@ -45,6 +46,8 @@ enum TMDBEndpoint {
             return "/search/movie"
         case .movieDetails(let id):
             return "/movie/\(id)"
+        case .videos(let movieId):
+            return "/movie/\(movieId)/videos"
         case .genres:
             return "/genre/movie/list"
         }
@@ -68,7 +71,7 @@ enum TMDBEndpoint {
             items.append(URLQueryItem(name: "page", value: "\(page)"))
             items.append(URLQueryItem(name: "include_adult", value: "false"))
             
-        case .movieDetails, .genres:
+        case .movieDetails, .videos, .genres:
             break // No additional parameters
         }
         

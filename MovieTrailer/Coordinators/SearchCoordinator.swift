@@ -75,7 +75,8 @@ struct SearchCoordinatorView: View {
                     },
                     onClose: {
                         coordinator.showingMovieDetail = false
-                    }
+                    },
+                    tmdbService: coordinator.tmdbService
                 )
             }
         }

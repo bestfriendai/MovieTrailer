@@ -14,8 +14,13 @@ struct MovieDetailView: View {
     let isInWatchlist: Bool
     let onWatchlistToggle: () -> Void
     let onClose: () -> Void
+    let tmdbService: TMDBService
     
     @State private var showingFullOverview = false
+    @State private var trailers: [Video] = []
+    @State private var selectedTrailer: Video?
+    @State private var showingTrailer = false
+    @State private var isLoadingTrailers = false
     
     var body: some View {
         ScrollView {
@@ -34,6 +39,11 @@ struct MovieDetailView: View {
                     // Overview
                     overviewSection
                     
+                    // Trailers (if available)
+                    if !trailers.isEmpty {
+                        trailerSection
+                    }
+                    
                     // Genres
                     genresSection
                     
@@ -47,6 +57,20 @@ struct MovieDetailView: View {
         }
         .background(Color(uiColor: .systemBackground))
         .ignoresSafeArea(edges: .top) // Only ignore top for backdrop bleed
+        .fullScreenCover(isPresented: $showingTrailer) {
+            if let trailer = selectedTrailer {
+                TrailerPlayerView(
+                    video: trailer,
+                    onClose: {
+                        showingTrailer = false
+                        selectedTrailer = nil
+                    }
+                )
+            }
+        }
+        .task {
+            await loadTrailers()
+        }
     }
     
     // MARK: - Backdrop Header
@@ -230,6 +254,127 @@ struct MovieDetailView: View {
             .buttonStyle(ScaleButtonStyle())
         }
         .padding(.top)
+    }
+    
+    // MARK: - Trailer Section
+    
+    private var trailerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Trailers")
+                .font(.title3.bold())
+            
+            if trailers.count == 1 {
+                // Single trailer - large button
+                Button {
+                    selectedTrailer = trailers[0]
+                    showingTrailer = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "play.circle.fill")
+                            .font(.title2)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Watch Trailer")
+                                .font(.headline)
+                            Text(trailers[0].name)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(.ultraThinMaterial)
+                    )
+                }
+                .buttonStyle(ScaleButtonStyle())
+            } else {
+                // Multiple trailers - horizontal scroll
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(trailers) { trailer in
+                            TrailerCardView(
+                                trailer: trailer,
+                                onTap: {
+                                    selectedTrailer = trailer
+                                    showingTrailer = true
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func loadTrailers() async {
+        isLoadingTrailers = true
+        defer { isLoadingTrailers = false }
+        
+        do {
+            let videoResponse = try await tmdbService.fetchVideos(for: movie.id)
+            await MainActor.run {
+                trailers = videoResponse.allTrailers
+            }
+        } catch {
+            print("⚠️ Failed to load trailers: \(error)")
+            // Silently fail - trailers are optional
+        }
+    }
+}
+
+// MARK: - Trailer Card View
+
+private struct TrailerCardView: View {
+    let trailer: Video
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Thumbnail with play icon overlay
+                ZStack {
+                    AsyncImage(url: trailer.youtubeThumbnailURL) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(16/9, contentMode: .fill)
+                    } placeholder: {
+                        Rectangle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.gray.opacity(0.3), .gray.opacity(0.1)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .aspectRatio(16/9, contentMode: .fill)
+                    }
+                    .frame(width: 200, height: 112)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    
+                    // Play button overlay
+                    Image(systemName: "play.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                }
+                
+                // Trailer name
+                Text(trailer.name)
+                    .font(.caption.bold())
+                    .lineLimit(2)
+                    .frame(width: 200, alignment: .leading)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

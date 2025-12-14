@@ -23,12 +23,14 @@ final class WatchlistCoordinator: ObservableObject, NavigationCoordinator {
     
     let watchlistManager: WatchlistManager
     let liveActivityManager: LiveActivityManager
+    let tmdbService: TMDBService
     
     // MARK: - Initialization
     
     init(
         watchlistManager: WatchlistManager,
-        liveActivityManager: LiveActivityManager
+        liveActivityManager: LiveActivityManager,
+        tmdbService: TMDBService
     ) {
         self.watchlistManager = watchlistManager
         self.liveActivityManager = liveActivityManager
@@ -84,7 +86,8 @@ struct WatchlistCoordinatorView: View {
                     },
                     onClose: {
                         coordinator.showingMovieDetail = false
-                    }
+                    },
+                    tmdbService: coordinator.tmdbService
                 )
             }
         }

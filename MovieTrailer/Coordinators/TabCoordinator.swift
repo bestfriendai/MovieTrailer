@@ -95,7 +95,8 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
         
         self.watchlistCoordinator = WatchlistCoordinator(
             watchlistManager: watchlistManager,
-            liveActivityManager: liveActivityManager
+            liveActivityManager: liveActivityManager,
+            tmdbService: tmdbService
         )
     }
     

@@ -189,6 +189,28 @@ actor TMDBService {
         }
     }
     
+    // MARK: - Videos
+    
+    /// Fetch videos (trailers, teasers, clips) for a movie
+    func fetchVideos(for movieId: Int) async throws -> VideoResponse {
+        try await request(
+            endpoint: .videos(movieId: movieId),
+            responseType: VideoResponse.self
+        )
+    }
+    
+    /// Fetch official trailers for a movie
+    func fetchOfficialTrailers(for movieId: Int) async throws -> [Video] {
+        let response = try await fetchVideos(for: movieId)
+        return response.officialTrailers
+    }
+    
+    /// Fetch the primary trailer for a movie
+    func fetchPrimaryTrailer(for movieId: Int) async throws -> Video? {
+        let response = try await fetchVideos(for: movieId)
+        return response.primaryTrailer
+    }
+    
     // MARK: - Cache Management
     
     /// Clear all cached responses
