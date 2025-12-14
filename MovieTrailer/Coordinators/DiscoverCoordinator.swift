@@ -67,7 +67,7 @@ struct DiscoverCoordinatorView: View {
                 }
             )
         }
-        .sheet(isPresented: $coordinator.showingMovieDetail) {
+        .fullScreenCover(isPresented: $coordinator.showingMovieDetail) {
             if let movie = coordinator.selectedMovie {
                 MovieDetailView(
                     movie: movie,
@@ -75,9 +75,6 @@ struct DiscoverCoordinatorView: View {
                     onWatchlistToggle: {
                         coordinator.watchlistManager.toggle(movie)
                     },
-                    onClose: {
-                        coordinator.showingMovieDetail = false
-                    }
                 )
             }
         }

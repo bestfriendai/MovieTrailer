@@ -42,10 +42,12 @@ struct MovieDetailView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 16)
-                .padding(.bottom, 32)
+                .frame(maxWidth: .infinity, alignment: .leading) // Ensure full width
             }
         }
+        .ignoresSafeArea(.container, edges: .top)
         .background(Color(uiColor: .systemBackground))
+        // Removed .ignoresSafeArea to prevent scaling issues
     }
     
     // MARK: - Backdrop Header
