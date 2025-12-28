@@ -3,7 +3,7 @@
 //  MovieTrailer
 //
 //  Created by Daniel Wijono on 09/12/2025.
-//  Enhanced: Retry logic with exponential backoff
+//  Enhanced: Retry logic with exponential backoff, certificate pinning
 //
 
 import Foundation
@@ -41,10 +41,11 @@ actor TMDBService {
         // Note: NOT using .convertFromSnakeCase because we have custom CodingKeys
     }
 
-    // MARK: - Custom URLSession with Caching
+    // MARK: - Custom URLSession with Caching and Certificate Pinning
 
-    /// Create a URLSession with custom cache configuration
-    static func createCachedSession() -> URLSession {
+    /// Create a URLSession with custom cache configuration and certificate pinning
+    /// - Parameter enforcePinning: Whether to enforce certificate pinning (default: true)
+    static func createCachedSession(enforcePinning: Bool = true) -> URLSession {
         let configuration = URLSessionConfiguration.default
 
         // Configure cache (50 MB memory, 200 MB disk)
@@ -60,7 +61,14 @@ actor TMDBService {
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 60
 
-        return URLSession(configuration: configuration)
+        // Enable certificate pinning for enhanced security
+        // This prevents man-in-the-middle attacks
+        let delegate = CertificatePinningDelegate(enforcePinning: enforcePinning)
+        return URLSession(
+            configuration: configuration,
+            delegate: delegate,
+            delegateQueue: nil
+        )
     }
 
     // MARK: - Generic Request Method with Retry

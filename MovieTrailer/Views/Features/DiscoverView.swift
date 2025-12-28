@@ -62,6 +62,7 @@ struct DiscoverView: View {
         .navigationTitle("Discover")
         .navigationBarTitleDisplayMode(.large)
         .refreshable {
+            HapticManager.shared.pulledToRefresh()
             await viewModel.refresh()
         }
         .task {
