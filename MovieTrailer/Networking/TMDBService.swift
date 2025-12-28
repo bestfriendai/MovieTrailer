@@ -213,6 +213,22 @@ actor TMDBService {
         )
     }
 
+    /// Fetch similar movies for a given movie
+    func fetchSimilarMovies(for movieId: Int, page: Int = 1) async throws -> MovieResponse {
+        try await request(
+            endpoint: .similarMovies(movieId: movieId, page: page),
+            responseType: MovieResponse.self
+        )
+    }
+
+    /// Fetch recommended movies for a given movie
+    func fetchRecommendations(for movieId: Int, page: Int = 1) async throws -> MovieResponse {
+        try await request(
+            endpoint: .recommendations(movieId: movieId, page: page),
+            responseType: MovieResponse.self
+        )
+    }
+
     // MARK: - Batch Operations with Rate Limiting
 
     /// Fetch multiple pages of movies concurrently with rate limiting
@@ -377,6 +393,10 @@ extension TMDBEndpoint {
             return "Videos for Movie (ID: \(movieId))"
         case .genres:
             return "Genre List"
+        case .similarMovies(let movieId, let page):
+            return "Similar Movies (ID: \(movieId), Page \(page))"
+        case .recommendations(let movieId, let page):
+            return "Recommendations (ID: \(movieId), Page \(page))"
         }
     }
 }
