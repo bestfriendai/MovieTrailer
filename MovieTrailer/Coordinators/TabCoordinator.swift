@@ -151,7 +151,20 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
     func finish() {
         removeAllChildren()
     }
-    
+
+    // MARK: - Tab Selection
+
+    /// Select a specific tab
+    func selectTab(_ tab: Tab) {
+        selectedTab = tab.rawValue
+    }
+
+    /// Select tab by index
+    func selectTab(index: Int) {
+        guard index >= 0 && index < Tab.allCases.count else { return }
+        selectedTab = index
+    }
+
     // MARK: - Tab Views
     
     @ViewBuilder

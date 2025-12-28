@@ -102,7 +102,10 @@ struct MainTabView: View {
     private var discoverTab: some View {
         NavigationStack {
             DiscoverView(
-                viewModel: DiscoverViewModel(tmdbService: tmdbService),
+                viewModel: DiscoverViewModel(
+                    tmdbService: tmdbService,
+                    watchlistManager: watchlistManager
+                ),
                 onMovieTap: { movie in
                     onMovieTap?(movie)
                 }
@@ -127,7 +130,10 @@ struct MainTabView: View {
     private var searchTab: some View {
         NavigationStack {
             SearchView(
-                viewModel: SearchViewModel(tmdbService: tmdbService),
+                viewModel: SearchViewModel(
+                    tmdbService: tmdbService,
+                    watchlistManager: watchlistManager
+                ),
                 onMovieTap: { movie in
                     onMovieTap?(movie)
                 }
@@ -141,7 +147,9 @@ struct MainTabView: View {
                 viewModel: WatchlistViewModel(
                     watchlistManager: watchlistManager
                 ),
-                onMovieTap: { movie in
+                onItemTap: { item in
+                    // Convert WatchlistItem to Movie for navigation
+                    let movie = item.toMovie()
                     onMovieTap?(movie)
                 }
             )

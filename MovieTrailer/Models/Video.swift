@@ -38,7 +38,12 @@ struct Video: Codable, Identifiable {
     var isOfficialTrailer: Bool {
         official && type.lowercased() == "trailer"
     }
-    
+
+    /// Check if this is an official YouTube trailer
+    var isOfficialYouTubeTrailer: Bool {
+        isOfficialTrailer && isYouTube
+    }
+
     /// YouTube watch URL
     var youtubeURL: URL? {
         guard isYouTube else { return nil }

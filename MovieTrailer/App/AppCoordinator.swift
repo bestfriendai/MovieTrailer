@@ -275,7 +275,7 @@ final class AppCoordinator: ObservableObject {
     private func navigateToSearch(query: String) {
         print("📱 Navigating to search: \(query)")
 
-        tabCoordinator?.selectTab(.search)
+        tabCoordinator?.selectTab(TabCoordinator.Tab.search)
 
         if !query.isEmpty {
             NotificationCenter.default.post(
@@ -288,17 +288,17 @@ final class AppCoordinator: ObservableObject {
 
     private func navigateToWatchlist() {
         print("📱 Navigating to watchlist")
-        tabCoordinator?.selectTab(.watchlist)
+        tabCoordinator?.selectTab(TabCoordinator.Tab.watchlist)
     }
 
     private func navigateToDiscover() {
         print("📱 Navigating to discover")
-        tabCoordinator?.selectTab(.discover)
+        tabCoordinator?.selectTab(TabCoordinator.Tab.discover)
     }
 
     private func navigateToTonight() {
         print("📱 Navigating to tonight")
-        tabCoordinator?.selectTab(.tonight)
+        tabCoordinator?.selectTab(TabCoordinator.Tab.tonight)
     }
 }
 
