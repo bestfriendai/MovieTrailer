@@ -9,6 +9,7 @@
 import Foundation
 import Network
 import Combine
+import SwiftUI
 
 /// Network connection type
 enum NetworkConnectionType: String {
@@ -185,8 +186,6 @@ extension Notification.Name {
 
 // MARK: - Offline Banner View
 
-import SwiftUI
-
 /// Banner view displayed when offline
 struct OfflineBannerView: View {
     @ObservedObject var networkMonitor: NetworkMonitor
@@ -279,29 +278,26 @@ enum OfflineCacheStrategy {
 
 #if DEBUG
 extension NetworkMonitor {
-    /// Mock monitor for previews (connected)
-    static var connectedMock: NetworkMonitor {
-        let monitor = NetworkMonitor.shared
-        monitor.isConnected = true
-        monitor.connectionType = .wifi
-        monitor.showOfflineBanner = false
-        return monitor
+    /// Configure for connected state (for previews)
+    func configureAsConnected() {
+        self.showOfflineBanner = false
     }
 
-    /// Mock monitor for previews (disconnected)
-    static var disconnectedMock: NetworkMonitor {
-        let monitor = NetworkMonitor.shared
-        monitor.isConnected = false
-        monitor.connectionType = .none
-        monitor.showOfflineBanner = true
-        return monitor
+    /// Configure for disconnected state (for previews)
+    func configureAsDisconnected() {
+        self.showOfflineBanner = true
     }
 }
 
 struct OfflineBannerView_Previews: PreviewProvider {
     static var previews: some View {
         VStack {
-            OfflineBannerView(networkMonitor: .disconnectedMock)
+            // Create a preview with banner showing
+            OfflineBannerView(networkMonitor: {
+                let monitor = NetworkMonitor.shared
+                monitor.configureAsDisconnected()
+                return monitor
+            }())
             Spacer()
         }
         .background(Color(uiColor: .systemBackground))
