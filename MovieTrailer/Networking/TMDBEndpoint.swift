@@ -3,6 +3,7 @@
 //  MovieTrailer
 //
 //  Created by Daniel Wijono on 09/12/2025.
+//  Enhanced: Secure API key storage with Keychain
 //
 
 import Foundation
@@ -16,24 +17,35 @@ enum TMDBEndpoint {
     case movieDetails(id: Int)
     case videos(movieId: Int)
     case genres
-    
+    case similarMovies(movieId: Int, page: Int)
+    case recommendations(movieId: Int, page: Int)
+
     // MARK: - Configuration
-    
+
     private static let baseURL = "https://api.themoviedb.org/3"
-    
-    /// API key - loaded from Info.plist (configured via Config.xcconfig)
+
+    /// API key - loaded securely from Keychain with Info.plist fallback
     /// Get your API key from: https://www.themoviedb.org/settings/api
     private static var apiKey: String {
-        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "TMDB_API_KEY") as? String,
-              !apiKey.isEmpty,
-              apiKey != "$(TMDB_API_KEY)" else {
-            return ""
+        // Use KeychainManager for secure storage
+        if let key = KeychainManager.shared.tmdbAPIKey {
+            return key
         }
-        return apiKey
+
+        // Fallback to Info.plist for backwards compatibility
+        if let plistKey = Bundle.main.object(forInfoDictionaryKey: "TMDB_API_KEY") as? String,
+           !plistKey.isEmpty,
+           plistKey != "$(TMDB_API_KEY)" {
+            // Migrate to Keychain for future use
+            try? KeychainManager.shared.setTMDBAPIKey(plistKey)
+            return plistKey
+        }
+
+        return ""
     }
-    
+
     // MARK: - Path
-    
+
     private var path: String {
         switch self {
         case .trending:
@@ -50,50 +62,58 @@ enum TMDBEndpoint {
             return "/movie/\(movieId)/videos"
         case .genres:
             return "/genre/movie/list"
+        case .similarMovies(let movieId, _):
+            return "/movie/\(movieId)/similar"
+        case .recommendations(let movieId, _):
+            return "/movie/\(movieId)/recommendations"
         }
     }
-    
+
     // MARK: - Query Parameters
-    
+
     private var queryItems: [URLQueryItem] {
         var items = [
             URLQueryItem(name: "api_key", value: Self.apiKey)
         ]
-        
+
         switch self {
         case .trending(let page),
              .popular(let page),
              .topRated(let page):
             items.append(URLQueryItem(name: "page", value: "\(page)"))
-            
+
         case .search(let query, let page):
             items.append(URLQueryItem(name: "query", value: query))
             items.append(URLQueryItem(name: "page", value: "\(page)"))
             items.append(URLQueryItem(name: "include_adult", value: "false"))
-            
+
         case .movieDetails, .videos, .genres:
             break // No additional parameters
+
+        case .similarMovies(_, let page),
+             .recommendations(_, let page):
+            items.append(URLQueryItem(name: "page", value: "\(page)"))
         }
-        
+
         return items
     }
-    
+
     // MARK: - URL Construction
-    
+
     /// Construct full URL for the endpoint
     var url: URL? {
         var components = URLComponents(string: Self.baseURL + path)
         components?.queryItems = queryItems
         return components?.url
     }
-    
+
     // MARK: - Request Configuration
-    
+
     /// HTTP method for the endpoint
     var method: String {
         "GET" // All TMDB endpoints use GET
     }
-    
+
     /// Cache policy for the endpoint
     var cachePolicy: URLRequest.CachePolicy {
         switch self {
@@ -112,9 +132,12 @@ enum TMDBEndpoint {
         case .genres:
             // Cache genres indefinitely (they rarely change)
             return .returnCacheDataElseLoad
+        case .similarMovies, .recommendations:
+            // Cache similar/recommendations for a few hours
+            return .returnCacheDataElseLoad
         }
     }
-    
+
     /// Timeout interval for the endpoint
     var timeoutInterval: TimeInterval {
         switch self {
@@ -124,22 +147,22 @@ enum TMDBEndpoint {
             return 30
         }
     }
-    
+
     /// Create URLRequest for the endpoint
     func urlRequest() throws -> URLRequest {
         guard let url = url else {
             throw NetworkError.invalidURL
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.cachePolicy = cachePolicy
         request.timeoutInterval = timeoutInterval
-        
+
         // Add headers
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         return request
     }
 }
@@ -165,9 +188,13 @@ extension TMDBEndpoint {
             return "Videos for Movie (ID: \(movieId))"
         case .genres:
             return "Genre List"
+        case .similarMovies(let movieId, let page):
+            return "Similar Movies (ID: \(movieId), Page \(page))"
+        case .recommendations(let movieId, let page):
+            return "Recommendations (ID: \(movieId), Page \(page))"
         }
     }
-    
+
     /// Full URL string for debugging
     var urlString: String {
         url?.absoluteString ?? "Invalid URL"
@@ -180,13 +207,16 @@ extension TMDBEndpoint {
 extension TMDBEndpoint {
     /// Check if API key is configured
     static var isAPIKeyConfigured: Bool {
-        !apiKey.isEmpty && apiKey != "YOUR_TMDB_API_KEY_HERE"
+        KeychainManager.shared.isTMDBAPIKeyConfigured
     }
-    
-    /// Set API key programmatically (for testing or configuration)
-    static func setAPIKey(_ key: String) {
-        // In production, this should update a secure storage location
-        // For now, this is a placeholder for the configuration pattern
-        print("⚠️ API key should be set in TMDBEndpoint.apiKey")
+
+    /// Set API key programmatically (stores in Keychain)
+    static func setAPIKey(_ key: String) throws {
+        try KeychainManager.shared.setTMDBAPIKey(key)
+    }
+
+    /// Clear stored API key
+    static func clearAPIKey() throws {
+        try KeychainManager.shared.delete(key: .tmdbAPIKey)
     }
 }

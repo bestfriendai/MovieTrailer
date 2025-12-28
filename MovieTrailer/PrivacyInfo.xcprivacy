@@ -5,8 +5,80 @@
    MovieTrailer
 
    Created by Silverius Daniel Wijono on 09/12/25.
-   Copyright (c) 2025 ___ORGANIZATIONNAME___. All rights reserved.
+   Updated by Claude Code Audit on 28/12/2025.
+
+   Privacy Manifest for App Store compliance (iOS 17+)
 -->
 <plist version="1.0">
-<dict/>
+<dict>
+    <!-- Privacy Tracking - App does not track users -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <!-- Tracking Domains - None used -->
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <!-- Accessed API Types -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <!-- UserDefaults API - Used for app preferences and watchlist storage -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+
+        <!-- File Timestamp API - Used for cache management -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>C617.1</string>
+            </array>
+        </dict>
+
+        <!-- System Boot Time API - Used for cache invalidation -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>35F9.1</string>
+            </array>
+        </dict>
+
+        <!-- Disk Space API - Used for cache size management -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>E174.1</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Collected Data Types - Minimal data collection -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <!-- Product Interaction Data - Watchlist, favorites -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeProductInteraction</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+    </array>
+</dict>
 </plist>
