@@ -37,6 +37,7 @@ struct TonightView: View {
         .navigationTitle("Tonight")
         .navigationBarTitleDisplayMode(.large)
         .refreshable {
+            HapticManager.shared.pulledToRefresh()
             await viewModel.refresh()
         }
         .task {
