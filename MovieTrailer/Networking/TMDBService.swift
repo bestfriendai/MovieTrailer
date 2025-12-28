@@ -372,36 +372,6 @@ extension TMDBService {
     static let shared = TMDBService(urlSession: createCachedSession())
 }
 
-// MARK: - TMDBEndpoint Debug Description
-
-#if DEBUG
-extension TMDBEndpoint {
-    /// Description for debugging (moved here to avoid circular dependency)
-    var debugDescription: String {
-        switch self {
-        case .trending(let page):
-            return "Trending Movies (Page \(page))"
-        case .popular(let page):
-            return "Popular Movies (Page \(page))"
-        case .topRated(let page):
-            return "Top Rated Movies (Page \(page))"
-        case .search(let query, let page):
-            return "Search: \"\(query)\" (Page \(page))"
-        case .movieDetails(let id):
-            return "Movie Details (ID: \(id))"
-        case .videos(let movieId):
-            return "Videos for Movie (ID: \(movieId))"
-        case .genres:
-            return "Genre List"
-        case .similarMovies(let movieId, let page):
-            return "Similar Movies (ID: \(movieId), Page \(page))"
-        case .recommendations(let movieId, let page):
-            return "Recommendations (ID: \(movieId), Page \(page))"
-        }
-    }
-}
-#endif
-
 // MARK: - Preview/Testing Helpers
 
 #if DEBUG
