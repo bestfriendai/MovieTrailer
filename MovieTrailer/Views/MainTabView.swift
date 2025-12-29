@@ -3,17 +3,17 @@
 //  MovieTrailer
 //
 //  Created by Silverius Daniel Wijono on 09/12/25.
-//  Implemented by Claude Code Audit on 28/12/2025.
+//  Redesigned with floating glass tab bar by Claude Code on 28/12/2025.
 //
 
 import SwiftUI
 
-/// Main tab bar view for app navigation
+/// Main tab bar view for app navigation with floating glass design
 struct MainTabView: View {
 
     // MARK: - Properties
 
-    @State private var selectedTab: Tab = .discover
+    @State private var selectedTab: AppTab = .discover
     @State private var tabBarVisible = true
 
     // Injected dependencies
@@ -22,9 +22,130 @@ struct MainTabView: View {
 
     // Navigation callbacks
     var onMovieTap: ((Movie) -> Void)?
+    var onWatchTrailer: ((Movie) -> Void)?
 
-    // MARK: - Tab Definition
+    // MARK: - Body
 
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Tab content
+            tabContent
+                .ignoresSafeArea(.keyboard)
+
+            // Floating glass tab bar
+            if tabBarVisible {
+                GlassTabBar(selectedTab: $selectedTab)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .onChange(of: selectedTab) { _ in
+            Haptics.shared.tabTapped()
+        }
+    }
+
+    // MARK: - Tab Content
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .discover:
+            discoverTab
+        case .swipe:
+            swipeTab
+        case .search:
+            searchTab
+        case .watchlist:
+            watchlistTab
+        }
+    }
+
+    // MARK: - Discover Tab
+
+    private var discoverTab: some View {
+        NavigationStack {
+            DiscoverView(
+                viewModel: DiscoverViewModel(
+                    tmdbService: tmdbService,
+                    watchlistManager: watchlistManager
+                ),
+                onMovieTap: { movie in
+                    onMovieTap?(movie)
+                },
+                onWatchTrailer: { movie in
+                    onWatchTrailer?(movie)
+                }
+            )
+        }
+    }
+
+    // MARK: - Swipe Tab
+
+    private var swipeTab: some View {
+        NavigationStack {
+            MovieSwipeView(
+                viewModel: MovieSwipeViewModel(
+                    tmdbService: tmdbService,
+                    watchlistManager: watchlistManager
+                ),
+                onMovieTap: { movie in
+                    onMovieTap?(movie)
+                }
+            )
+        }
+    }
+
+    // MARK: - Search Tab
+
+    private var searchTab: some View {
+        NavigationStack {
+            SearchView(
+                viewModel: SearchViewModel(
+                    tmdbService: tmdbService,
+                    watchlistManager: watchlistManager
+                ),
+                onMovieTap: { movie in
+                    onMovieTap?(movie)
+                }
+            )
+        }
+    }
+
+    // MARK: - Watchlist Tab
+
+    private var watchlistTab: some View {
+        NavigationStack {
+            WatchlistView(
+                viewModel: WatchlistViewModel(
+                    watchlistManager: watchlistManager,
+                    liveActivityManager: .shared
+                ),
+                onItemTap: { item in
+                    // Convert WatchlistItem to Movie for navigation
+                    let movie = item.toMovie()
+                    onMovieTap?(movie)
+                }
+            )
+        }
+    }
+
+    // MARK: - Tab Bar Visibility
+
+    func showTabBar() {
+        withAnimation(AppTheme.Animation.standard) {
+            tabBarVisible = true
+        }
+    }
+
+    func hideTabBar() {
+        withAnimation(AppTheme.Animation.standard) {
+            tabBarVisible = false
+        }
+    }
+}
+
+// MARK: - Legacy Tab Definition (for backward compatibility)
+
+extension MainTabView {
     enum Tab: String, CaseIterable {
         case discover = "Discover"
         case tonight = "Tonight"
@@ -58,107 +179,6 @@ struct MainTabView: View {
             }
         }
     }
-
-    // MARK: - Body
-
-    var body: some View {
-        TabView(selection: $selectedTab) {
-            // Discover Tab
-            discoverTab
-                .tabItem {
-                    Label(Tab.discover.rawValue, systemImage: selectedTab == .discover ? Tab.discover.selectedIcon : Tab.discover.icon)
-                }
-                .tag(Tab.discover)
-
-            // Tonight Tab
-            tonightTab
-                .tabItem {
-                    Label(Tab.tonight.rawValue, systemImage: selectedTab == .tonight ? Tab.tonight.selectedIcon : Tab.tonight.icon)
-                }
-                .tag(Tab.tonight)
-
-            // Search Tab
-            searchTab
-                .tabItem {
-                    Label(Tab.search.rawValue, systemImage: selectedTab == .search ? Tab.search.selectedIcon : Tab.search.icon)
-                }
-                .tag(Tab.search)
-
-            // Watchlist Tab
-            watchlistTab
-                .tabItem {
-                    Label(Tab.watchlist.rawValue, systemImage: selectedTab == .watchlist ? Tab.watchlist.selectedIcon : Tab.watchlist.icon)
-                }
-                .tag(Tab.watchlist)
-        }
-        .tint(.primary)
-        .onChange(of: selectedTab) { _ in
-            HapticManager.shared.lightImpact()
-        }
-        .glassEffect()
-    }
-
-    // MARK: - Tab Views
-
-    private var discoverTab: some View {
-        GlassEffectContainer {
-            NavigationStack {
-                DiscoverView(
-                    viewModel: DiscoverViewModel(
-                        tmdbService: tmdbService,
-                        watchlistManager: watchlistManager
-                    ),
-                    onMovieTap: { movie in
-                        onMovieTap?(movie)
-                    }
-                )
-            }
-        }
-    }
-
-    private var tonightTab: some View {
-        NavigationStack {
-            TonightView(
-                viewModel: TonightViewModel(
-                    tmdbService: tmdbService,
-                    watchlistManager: watchlistManager
-                ),
-                onMovieTap: { movie in
-                    onMovieTap?(movie)
-                }
-            )
-        }
-    }
-
-    private var searchTab: some View {
-        NavigationStack {
-            SearchView(
-                viewModel: SearchViewModel(
-                    tmdbService: tmdbService,
-                    watchlistManager: watchlistManager
-                ),
-                onMovieTap: { movie in
-                    onMovieTap?(movie)
-                }
-            )
-        }
-    }
-
-    private var watchlistTab: some View {
-        NavigationStack {
-            WatchlistView(
-                viewModel: WatchlistViewModel(
-                    watchlistManager: watchlistManager,
-                    liveActivityManager: .shared
-                ),
-                onItemTap: { item in
-                    // Convert WatchlistItem to Movie for navigation
-                    let movie = item.toMovie()
-                    onMovieTap?(movie)
-                }
-            )
-        }
-    }
 }
 
 // MARK: - Custom Tab Bar (Alternative)
@@ -187,7 +207,7 @@ struct CustomTabBar: View {
     private func tabButton(for tab: MainTabView.Tab) -> some View {
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                HapticManager.shared.lightImpact()
+                Haptics.shared.lightImpact()
                 selectedTab = tab
             }
         } label: {
@@ -218,7 +238,7 @@ struct CustomTabBar: View {
     }
 }
 
-// MARK: - Floating Tab Bar
+// MARK: - Floating Tab Bar (Legacy)
 
 struct FloatingTabBar: View {
 
@@ -229,7 +249,7 @@ struct FloatingTabBar: View {
             ForEach(MainTabView.Tab.allCases, id: \.self) { tab in
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        HapticManager.shared.lightImpact()
+                        Haptics.shared.lightImpact()
                         selectedTab = tab
                     }
                 } label: {
@@ -292,20 +312,20 @@ struct MainTabView_Previews: PreviewProvider {
             watchlistManager: WatchlistManager()
         )
 
-        // Custom tab bar preview
+        // Glass tab bar preview
         VStack {
             Spacer()
-            CustomTabBar(selectedTab: .constant(.discover))
+            GlassTabBar(selectedTab: .constant(.discover))
         }
-        .previewDisplayName("Custom Tab Bar")
+        .previewDisplayName("Glass Tab Bar")
 
-        // Floating tab bar preview
+        // Pill tab bar preview
         VStack {
             Spacer()
-            FloatingTabBar(selectedTab: .constant(.tonight))
+            PillTabBar(selectedTab: .constant(.swipe))
                 .padding(.bottom, 30)
         }
-        .previewDisplayName("Floating Tab Bar")
+        .previewDisplayName("Pill Tab Bar")
     }
 }
 #endif

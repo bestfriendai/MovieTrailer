@@ -3,65 +3,58 @@
 //  MovieTrailer
 //
 //  Created by Daniel Wijono on 10/12/2025.
+//  Redesigned with Apple 2025 design language
 //
 
 import SwiftUI
 
 struct DiscoverView: View {
-    
+
     @StateObject private var viewModel: DiscoverViewModel
+    @ObservedObject private var preferences = UserPreferences.shared
     let onMovieTap: (Movie) -> Void
-    
-    init(viewModel: DiscoverViewModel, onMovieTap: @escaping (Movie) -> Void) {
+    let onWatchTrailer: ((Movie) -> Void)?
+
+    init(
+        viewModel: DiscoverViewModel,
+        onMovieTap: @escaping (Movie) -> Void,
+        onWatchTrailer: ((Movie) -> Void)? = nil
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.onMovieTap = onMovieTap
+        self.onWatchTrailer = onWatchTrailer
     }
-    
+
     var body: some View {
         ScrollView {
-            VStack(spacing: 32) {
-                // Trending Section
-                MovieSection(
-                    title: "Trending This Week",
-                    icon: "flame.fill",
-                    iconColor: .orange,
-                    movies: viewModel.trendingMovies,
-                    isLoading: viewModel.isLoadingTrending,
-                    isInWatchlist: viewModel.isInWatchlist,
-                    onMovieTap: onMovieTap,
-                    onWatchlistToggle: viewModel.toggleWatchlist
-                )
-                
-                // Popular Section
-                MovieSection(
-                    title: "Popular Now",
-                    icon: "star.fill",
-                    iconColor: .yellow,
-                    movies: viewModel.popularMovies,
-                    isLoading: viewModel.isLoadingPopular,
-                    isInWatchlist: viewModel.isInWatchlist,
-                    onMovieTap: onMovieTap,
-                    onWatchlistToggle: viewModel.toggleWatchlist
-                )
-                
-                // Top Rated Section
-                MovieSection(
-                    title: "Top Rated",
-                    icon: "trophy.fill",
-                    iconColor: .purple,
-                    movies: viewModel.topRatedMovies,
-                    isLoading: viewModel.isLoadingTopRated,
-                    isInWatchlist: viewModel.isInWatchlist,
-                    onMovieTap: onMovieTap,
-                    onWatchlistToggle: viewModel.toggleWatchlist
-                )
+            VStack(spacing: Spacing.xl) {
+                // Filter header
+                filterHeader
+                    .padding(.top, Spacing.sm)
+
+                // Hero carousel for featured movies
+                if !viewModel.trendingMovies.isEmpty {
+                    HeroCarousel(
+                        movies: viewModel.trendingMovies,
+                        isInWatchlist: viewModel.isInWatchlist,
+                        onMovieTap: onMovieTap,
+                        onWatchTrailer: { movie in
+                            onWatchTrailer?(movie)
+                        },
+                        onWatchlistToggle: viewModel.toggleWatchlist
+                    )
+                }
+
+                // Content sections based on category
+                contentSections
             }
-            .padding(.vertical)
+            .padding(.bottom, Spacing.xxxl + 60) // Extra space for tab bar
         }
+        .background(Color(.systemBackground))
         .navigationTitle("Discover")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .refreshable {
-            HapticManager.shared.pulledToRefresh()
+            Haptics.shared.pulledToRefresh()
             await viewModel.refresh()
         }
         .task {
@@ -78,13 +71,110 @@ struct DiscoverView: View {
                 }
             }
         }
+        .onChange(of: preferences.selectedCategory) { _ in
+            Task {
+                await viewModel.loadForCategory(preferences.selectedCategory)
+            }
+        }
+    }
+
+    // MARK: - Filter Header
+
+    private var filterHeader: some View {
+        VStack(spacing: Spacing.md) {
+            // Category pills
+            CategoryScrollView(selectedCategory: $preferences.selectedCategory)
+
+            // Streaming filter button
+            HStack {
+                StreamingFilterButton(preferences: preferences)
+                Spacer()
+
+                // Sort button (future enhancement)
+                Button(action: {
+                    Haptics.shared.lightImpact()
+                }) {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "arrow.up.arrow.down")
+                        Text("Sort")
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+                    .background(Color(.systemGray6))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(PillButtonStyle())
+            }
+            .padding(.horizontal, Spacing.horizontal)
+        }
+    }
+
+    // MARK: - Content Sections
+
+    @ViewBuilder
+    private var contentSections: some View {
+        VStack(spacing: Spacing.xxl) {
+            // Trending Section (hide if showing in hero)
+            if preferences.selectedCategory != .new {
+                GlassMovieSection(
+                    title: "Trending This Week",
+                    icon: "flame.fill",
+                    iconColor: .categoryNew,
+                    movies: viewModel.filteredTrendingMovies,
+                    isLoading: viewModel.isLoadingTrending,
+                    isInWatchlist: viewModel.isInWatchlist,
+                    onMovieTap: onMovieTap,
+                    onWatchlistToggle: viewModel.toggleWatchlist
+                )
+            }
+
+            // Popular Section
+            GlassMovieSection(
+                title: "Popular Now",
+                icon: "star.fill",
+                iconColor: .yellow,
+                movies: viewModel.filteredPopularMovies,
+                isLoading: viewModel.isLoadingPopular,
+                isInWatchlist: viewModel.isInWatchlist,
+                onMovieTap: onMovieTap,
+                onWatchlistToggle: viewModel.toggleWatchlist
+            )
+
+            // Top Rated Section
+            GlassMovieSection(
+                title: "Top Rated",
+                icon: "trophy.fill",
+                iconColor: .purple,
+                movies: viewModel.filteredTopRatedMovies,
+                isLoading: viewModel.isLoadingTopRated,
+                isInWatchlist: viewModel.isInWatchlist,
+                onMovieTap: onMovieTap,
+                onWatchlistToggle: viewModel.toggleWatchlist
+            )
+
+            // Category-specific section
+            if let categoryMovies = viewModel.categoryMovies, !categoryMovies.isEmpty {
+                GlassMovieSection(
+                    title: "\(preferences.selectedCategory.rawValue) Movies",
+                    icon: preferences.selectedCategory.icon,
+                    iconColor: preferences.selectedCategory.color,
+                    movies: categoryMovies,
+                    isLoading: viewModel.isLoadingCategory,
+                    isInWatchlist: viewModel.isInWatchlist,
+                    onMovieTap: onMovieTap,
+                    onWatchlistToggle: viewModel.toggleWatchlist
+                )
+            }
+        }
     }
 }
 
-// MARK: - Movie Section
+// MARK: - Glass Movie Section
 
-struct MovieSection: View {
-    
+struct GlassMovieSection: View {
+
     let title: String
     let icon: String
     let iconColor: Color
@@ -93,11 +183,11 @@ struct MovieSection: View {
     let isInWatchlist: (Movie) -> Bool
     let onMovieTap: (Movie) -> Void
     let onWatchlistToggle: (Movie) -> Void
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             // Section header
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.sm) {
                 Image(systemName: icon)
                     .font(.title2)
                     .foregroundStyle(
@@ -107,59 +197,83 @@ struct MovieSection: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                
+
                 Text(title)
-                    .font(.title2.bold())
+                    .font(.sectionTitle)
                     .foregroundColor(.primary)
-                
+
                 Spacer()
+
+                // See all button
+                Button(action: {
+                    Haptics.shared.lightImpact()
+                }) {
+                    HStack(spacing: Spacing.xxs) {
+                        Text("See All")
+                            .font(.subheadline.weight(.medium))
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundColor(.secondary)
+                }
             }
-            .padding(.horizontal)
-            
+            .padding(.horizontal, Spacing.horizontal)
+
             // Movies scroll
             if isLoading && movies.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
+                    HStack(spacing: Spacing.md) {
                         ForEach(0..<5, id: \.self) { _ in
-                            MovieCardSkeleton()
+                            GlassMovieCardSkeleton()
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, Spacing.horizontal)
                 }
+            } else if movies.isEmpty {
+                emptyState
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
+                    HStack(spacing: Spacing.md) {
                         ForEach(movies) { movie in
-                            MovieCard(
+                            GlassMovieCard(
                                 movie: movie,
                                 isInWatchlist: isInWatchlist(movie),
-                                onTap: {
-                                    onMovieTap(movie)
-                                },
-                                onWatchlistToggle: {
-                                    onWatchlistToggle(movie)
-                                }
+                                size: .standard,
+                                onTap: { onMovieTap(movie) },
+                                onWatchlistToggle: { onWatchlistToggle(movie) }
                             )
-                            .frame(width: 160)
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, Spacing.horizontal)
                 }
             }
         }
     }
+
+    private var emptyState: some View {
+        VStack(spacing: Spacing.sm) {
+            Image(systemName: "film")
+                .font(.largeTitle)
+                .foregroundColor(.secondary.opacity(0.5))
+            Text("No movies found")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
+    }
 }
 
-// MARK: - Skeleton Loader
+// MARK: - Glass Skeleton Loader
 
-struct MovieCardSkeleton: View {
-    
+struct GlassMovieCardSkeleton: View {
+
     @State private var isAnimating = false
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             // Poster skeleton
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
                 .fill(
                     LinearGradient(
                         colors: [
@@ -171,24 +285,51 @@ struct MovieCardSkeleton: View {
                         endPoint: isAnimating ? .trailing : .leading
                     )
                 )
-                .aspectRatio(2/3, contentMode: .fill)
-            
+                .aspectRatio(AspectRatio.poster, contentMode: .fill)
+                .frame(width: Size.movieCardStandard)
+
             // Title skeleton
             RoundedRectangle(cornerRadius: 4)
                 .fill(Color.gray.opacity(0.2))
-                .frame(height: 16)
-            
-            // Rating skeleton
+                .frame(width: Size.movieCardStandard, height: 16)
+
+            // Year skeleton
             RoundedRectangle(cornerRadius: 4)
-                .fill(Color.gray.opacity(0.2))
-                .frame(width: 80, height: 12)
+                .fill(Color.gray.opacity(0.15))
+                .frame(width: 60, height: 12)
         }
-        .frame(width: 160)
         .onAppear {
             withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
                 isAnimating = true
             }
         }
+    }
+}
+
+// MARK: - Legacy Section (kept for compatibility)
+
+struct MovieSection: View {
+
+    let title: String
+    let icon: String
+    let iconColor: Color
+    let movies: [Movie]
+    let isLoading: Bool
+    let isInWatchlist: (Movie) -> Bool
+    let onMovieTap: (Movie) -> Void
+    let onWatchlistToggle: (Movie) -> Void
+
+    var body: some View {
+        GlassMovieSection(
+            title: title,
+            icon: icon,
+            iconColor: iconColor,
+            movies: movies,
+            isLoading: isLoading,
+            isInWatchlist: isInWatchlist,
+            onMovieTap: onMovieTap,
+            onWatchlistToggle: onWatchlistToggle
+        )
     }
 }
 
