@@ -3,71 +3,65 @@
 //  MovieTrailer
 //
 //  Created by Daniel Wijono on 10/12/2025.
+//  Redesigned with Apple TV aesthetic by Claude Code on 29/12/2025.
 //
 
 import SwiftUI
 import Combine
 
-/// Coordinator for managing the main tab bar
+/// Coordinator for managing the main tab bar with Apple TV design
 @MainActor
 final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
-    
+
     // MARK: - Published Properties
-    
+
     @Published var selectedTab: Int = 0
     @Published var childCoordinators: [any Coordinator] = []
-    
+
     // MARK: - Dependencies
-    
+
     let tmdbService: TMDBService
     let watchlistManager: WatchlistManager
     let liveActivityManager: LiveActivityManager
-    
-    // MARK: - Child Coordinators
-    
-    private(set) var discoverCoordinator: DiscoverCoordinator?
-    private(set) var tonightCoordinator: TonightCoordinator?
-    private(set) var searchCoordinator: SearchCoordinator?
-    private(set) var watchlistCoordinator: WatchlistCoordinator?
-    
+
     // MARK: - Tab Enum
-    
+
     enum Tab: Int, CaseIterable {
-        case discover = 0
-        case tonight = 1
+        case home = 0
+        case swipe = 1
         case search = 2
-        case watchlist = 3
-        
+        case library = 3
+
         var title: String {
             switch self {
-            case .discover: return "Discover"
-            case .tonight: return "Tonight"
+            case .home: return "Home"
+            case .swipe: return "Swipe"
             case .search: return "Search"
-            case .watchlist: return "Watchlist"
+            case .library: return "Library"
             }
         }
-        
+
         var icon: String {
             switch self {
-            case .discover: return "film"
-            case .tonight: return "star.circle"
+            case .home: return "house"
+            case .swipe: return "rectangle.stack"
             case .search: return "magnifyingglass"
-            case .watchlist: return "bookmark"
+            case .library: return "books.vertical"
             }
         }
-        
+
         var iconFilled: String {
             switch self {
-            case .discover: return "film.fill"
-            case .tonight: return "star.circle.fill"
+            case .home: return "house.fill"
+            case .swipe: return "rectangle.stack.fill"
             case .search: return "magnifyingglass"
-            case .watchlist: return "bookmark.fill"
+            case .library: return "books.vertical.fill"
             }
         }
     }
-    
+
     // MARK: - Initialization
-    
+
     init(
         tmdbService: TMDBService,
         watchlistManager: WatchlistManager,
@@ -76,83 +70,170 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
         self.tmdbService = tmdbService
         self.watchlistManager = watchlistManager
         self.liveActivityManager = liveActivityManager
-        
-        // Initialize child coordinators immediately
-        self.discoverCoordinator = DiscoverCoordinator(
-            tmdbService: tmdbService,
-            watchlistManager: watchlistManager
-        )
-        
-        self.tonightCoordinator = TonightCoordinator(
-            tmdbService: tmdbService,
-            watchlistManager: watchlistManager
-        )
-        
-        self.searchCoordinator = SearchCoordinator(
-            tmdbService: tmdbService,
-            watchlistManager: watchlistManager
-        )
-        
-        self.watchlistCoordinator = WatchlistCoordinator(
-            watchlistManager: watchlistManager,
-            liveActivityManager: liveActivityManager,
-            tmdbService: tmdbService
-        )
     }
-    
+
     // MARK: - Coordinator Protocol
-    
+
     var body: some View {
-        TabView(selection: Binding(
-            get: { self.selectedTab },
-            set: { self.selectedTab = $0 }
-        )) {
-            // Discover Tab
-            discoverTab()
+        TabCoordinatorView(coordinator: self)
+    }
+}
+
+// MARK: - Tab Coordinator View
+
+struct TabCoordinatorView: View {
+    @ObservedObject var coordinator: TabCoordinator
+
+    var body: some View {
+        TabView(selection: $coordinator.selectedTab) {
+            // Home Tab
+            coordinator.homeTabView
                 .tabItem {
-                    Label(Tab.discover.title, systemImage: selectedTab == Tab.discover.rawValue ? Tab.discover.iconFilled : Tab.discover.icon)
+                    Label(
+                        TabCoordinator.Tab.home.title,
+                        systemImage: coordinator.selectedTab == 0
+                            ? TabCoordinator.Tab.home.iconFilled
+                            : TabCoordinator.Tab.home.icon
+                    )
                 }
-                .tag(Tab.discover.rawValue)
-            
-            // Tonight Tab
-            tonightTab()
+                .tag(TabCoordinator.Tab.home.rawValue)
+
+            // Swipe Tab
+            coordinator.swipeTabView
                 .tabItem {
-                    Label(Tab.tonight.title, systemImage: selectedTab == Tab.tonight.rawValue ? Tab.tonight.iconFilled : Tab.tonight.icon)
+                    Label(
+                        TabCoordinator.Tab.swipe.title,
+                        systemImage: coordinator.selectedTab == 1
+                            ? TabCoordinator.Tab.swipe.iconFilled
+                            : TabCoordinator.Tab.swipe.icon
+                    )
                 }
-                .tag(Tab.tonight.rawValue)
-            
+                .tag(TabCoordinator.Tab.swipe.rawValue)
+
             // Search Tab
-            searchTab()
+            coordinator.searchTabView
                 .tabItem {
-                    Label(Tab.search.title, systemImage: Tab.search.icon)
+                    Label(
+                        TabCoordinator.Tab.search.title,
+                        systemImage: TabCoordinator.Tab.search.icon
+                    )
                 }
-                .tag(Tab.search.rawValue)
-            
-            // Watchlist Tab
-            watchlistTab()
+                .tag(TabCoordinator.Tab.search.rawValue)
+
+            // Library Tab
+            coordinator.libraryTabView
                 .tabItem {
-                    Label(Tab.watchlist.title, systemImage: selectedTab == Tab.watchlist.rawValue ? Tab.watchlist.iconFilled : Tab.watchlist.icon)
+                    Label(
+                        TabCoordinator.Tab.library.title,
+                        systemImage: coordinator.selectedTab == 3
+                            ? TabCoordinator.Tab.library.iconFilled
+                            : TabCoordinator.Tab.library.icon
+                    )
                 }
-                .tag(Tab.watchlist.rawValue)
+                .tag(TabCoordinator.Tab.library.rawValue)
         }
+        .tint(.white)
+        .preferredColorScheme(.dark)
         .onAppear {
-            self.start()
+            // Dark tab bar appearance
+            let appearance = UITabBarAppearance()
+            appearance.configureWithOpaqueBackground()
+            appearance.backgroundColor = UIColor.black
+            UITabBar.appearance().standardAppearance = appearance
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+
+            coordinator.start()
         }
     }
-    
-    func start() {
-        // Add coordinators to child array
-        if let discover = discoverCoordinator { addChild(discover) }
-        if let tonight = tonightCoordinator { addChild(tonight) }
-        if let search = searchCoordinator { addChild(search) }
-        if let watchlist = watchlistCoordinator { addChild(watchlist) }
+}
+
+extension TabCoordinator {
+
+    // MARK: - Tab Views
+
+    var homeTabView: some View {
+        HomeView(
+            viewModel: HomeViewModel(
+                tmdbService: tmdbService,
+                watchlistManager: watchlistManager
+            ),
+            onMovieTap: { movie in
+                self.showMovieDetail(movie)
+            },
+            onPlayTrailer: { movie in
+                self.playTrailer(movie)
+            }
+        )
     }
-    
+
+    var swipeTabView: some View {
+        MovieSwipeView(
+            viewModel: MovieSwipeViewModel(
+                tmdbService: tmdbService,
+                watchlistManager: watchlistManager
+            ),
+            onMovieTap: { movie in
+                self.showMovieDetail(movie)
+            }
+        )
+    }
+
+    var searchTabView: some View {
+        SearchView(
+            viewModel: SearchViewModel(
+                tmdbService: tmdbService,
+                watchlistManager: watchlistManager
+            ),
+            onMovieTap: { movie in
+                self.showMovieDetail(movie)
+            }
+        )
+    }
+
+    var libraryTabView: some View {
+        WatchlistView(
+            viewModel: WatchlistViewModel(
+                watchlistManager: watchlistManager,
+                liveActivityManager: liveActivityManager
+            ),
+            onItemTap: { item in
+                let movie = item.toMovie()
+                self.showMovieDetail(movie)
+            }
+        )
+    }
+
+    // MARK: - Navigation Helpers
+
+    func showMovieDetail(_ movie: Movie) {
+        NotificationCenter.default.post(
+            name: .showMovieDetail,
+            object: nil,
+            userInfo: ["movieId": movie.id]
+        )
+    }
+
+    func playTrailer(_ movie: Movie) {
+        NotificationCenter.default.post(
+            name: .showMovieDetail,
+            object: nil,
+            userInfo: ["movieId": movie.id, "playTrailer": true]
+        )
+    }
+
+    func start() {
+        // Initialization complete
+    }
+
     func finish() {
         removeAllChildren()
     }
 
     // MARK: - Tab Selection
+
+    func switchToTab(_ index: Int) {
+        selectedTab = index
+    }
 
     /// Select a specific tab
     func selectTab(_ tab: Tab) {
@@ -161,70 +242,6 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
 
     /// Select tab by index
     func selectTab(index: Int) {
-        guard index >= 0 && index < Tab.allCases.count else { return }
         selectedTab = index
-    }
-
-    // MARK: - Tab Views
-    
-    @ViewBuilder
-    private func discoverTab() -> some View {
-        if let coordinator = discoverCoordinator {
-            coordinator.body
-        } else {
-            placeholderView(for: .discover)
-        }
-    }
-    
-    @ViewBuilder
-    private func tonightTab() -> some View {
-        if let coordinator = tonightCoordinator {
-            coordinator.body
-        } else {
-            placeholderView(for: .tonight)
-        }
-    }
-    
-    @ViewBuilder
-    private func searchTab() -> some View {
-        if let coordinator = searchCoordinator {
-            coordinator.body
-        } else {
-            placeholderView(for: .search)
-        }
-    }
-    
-    @ViewBuilder
-    private func watchlistTab() -> some View {
-        if let coordinator = watchlistCoordinator {
-            coordinator.body
-        } else {
-            placeholderView(for: .watchlist)
-        }
-    }
-    
-    // MARK: - Placeholder
-    
-    private func placeholderView(for tab: Tab) -> some View {
-        VStack(spacing: 20) {
-            Image(systemName: tab.iconFilled)
-                .font(.system(size: 60))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.blue, .purple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            Text(tab.title)
-                .font(.title.bold())
-            
-            Text("Coming soon...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemBackground))
     }
 }

@@ -287,18 +287,18 @@ final class AppCoordinator: ObservableObject {
     }
 
     private func navigateToWatchlist() {
-        print("📱 Navigating to watchlist")
-        tabCoordinator?.selectTab(TabCoordinator.Tab.watchlist)
+        print("📱 Navigating to library")
+        tabCoordinator?.selectTab(TabCoordinator.Tab.library)
     }
 
     private func navigateToDiscover() {
-        print("📱 Navigating to discover")
-        tabCoordinator?.selectTab(TabCoordinator.Tab.discover)
+        print("📱 Navigating to home")
+        tabCoordinator?.selectTab(TabCoordinator.Tab.home)
     }
 
     private func navigateToTonight() {
-        print("📱 Navigating to tonight")
-        tabCoordinator?.selectTab(TabCoordinator.Tab.tonight)
+        print("📱 Navigating to swipe")
+        tabCoordinator?.selectTab(TabCoordinator.Tab.swipe)
     }
 }
 

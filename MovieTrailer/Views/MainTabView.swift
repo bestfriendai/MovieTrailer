@@ -3,17 +3,17 @@
 //  MovieTrailer
 //
 //  Created by Silverius Daniel Wijono on 09/12/25.
-//  Redesigned with floating glass tab bar by Claude Code on 28/12/2025.
+//  Redesigned with Apple TV aesthetic by Claude Code on 29/12/2025.
 //
 
 import SwiftUI
 
-/// Main tab bar view for app navigation with floating glass design
+/// Main tab bar view for app navigation with Apple TV-style design
 struct MainTabView: View {
 
     // MARK: - Properties
 
-    @State private var selectedTab: AppTab = .discover
+    @State private var selectedTab: AppTab = .home
     @State private var tabBarVisible = true
 
     // Injected dependencies
@@ -28,16 +28,21 @@ struct MainTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            // Dark background
+            Color.appBackground
+                .ignoresSafeArea()
+
             // Tab content
             tabContent
                 .ignoresSafeArea(.keyboard)
 
-            // Floating glass tab bar
+            // Apple TV-style tab bar
             if tabBarVisible {
-                GlassTabBar(selectedTab: $selectedTab)
+                AppleTVTabBar(selectedTab: $selectedTab)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .preferredColorScheme(.dark)
         .onChange(of: selectedTab) { _ in
             Haptics.shared.tabTapped()
         }
@@ -48,84 +53,76 @@ struct MainTabView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
-        case .discover:
-            discoverTab
+        case .home:
+            homeTab
         case .swipe:
             swipeTab
         case .search:
             searchTab
-        case .watchlist:
-            watchlistTab
+        case .library:
+            libraryTab
         }
     }
 
-    // MARK: - Discover Tab
+    // MARK: - Home Tab
 
-    private var discoverTab: some View {
-        NavigationStack {
-            DiscoverView(
-                viewModel: DiscoverViewModel(
-                    tmdbService: tmdbService,
-                    watchlistManager: watchlistManager
-                ),
-                onMovieTap: { movie in
-                    onMovieTap?(movie)
-                },
-                onWatchTrailer: { movie in
-                    onWatchTrailer?(movie)
-                }
-            )
-        }
+    private var homeTab: some View {
+        HomeView(
+            viewModel: HomeViewModel(
+                tmdbService: tmdbService,
+                watchlistManager: watchlistManager
+            ),
+            onMovieTap: { movie in
+                onMovieTap?(movie)
+            },
+            onPlayTrailer: { movie in
+                onWatchTrailer?(movie)
+            }
+        )
     }
 
     // MARK: - Swipe Tab
 
     private var swipeTab: some View {
-        NavigationStack {
-            MovieSwipeView(
-                viewModel: MovieSwipeViewModel(
-                    tmdbService: tmdbService,
-                    watchlistManager: watchlistManager
-                ),
-                onMovieTap: { movie in
-                    onMovieTap?(movie)
-                }
-            )
-        }
+        MovieSwipeView(
+            viewModel: MovieSwipeViewModel(
+                tmdbService: tmdbService,
+                watchlistManager: watchlistManager
+            ),
+            onMovieTap: { movie in
+                onMovieTap?(movie)
+            }
+        )
     }
 
     // MARK: - Search Tab
 
     private var searchTab: some View {
-        NavigationStack {
-            SearchView(
-                viewModel: SearchViewModel(
-                    tmdbService: tmdbService,
-                    watchlistManager: watchlistManager
-                ),
-                onMovieTap: { movie in
-                    onMovieTap?(movie)
-                }
-            )
-        }
+        SearchView(
+            viewModel: SearchViewModel(
+                tmdbService: tmdbService,
+                watchlistManager: watchlistManager
+            ),
+            onMovieTap: { movie in
+                onMovieTap?(movie)
+            }
+        )
     }
 
-    // MARK: - Watchlist Tab
+    // MARK: - Library Tab
 
-    private var watchlistTab: some View {
-        NavigationStack {
-            WatchlistView(
-                viewModel: WatchlistViewModel(
-                    watchlistManager: watchlistManager,
-                    liveActivityManager: .shared
-                ),
-                onItemTap: { item in
-                    // Convert WatchlistItem to Movie for navigation
-                    let movie = item.toMovie()
-                    onMovieTap?(movie)
-                }
-            )
-        }
+    private var libraryTab: some View {
+        WatchlistView(
+            viewModel: WatchlistViewModel(
+                watchlistManager: watchlistManager,
+                liveActivityManager: .shared
+            ),
+            onItemTap: { item in
+                // Convert WatchlistItem to Movie for navigation
+                let movie = item.toMovie()
+                onMovieTap?(movie)
+            }
+        )
     }
 
     // MARK: - Tab Bar Visibility
@@ -312,20 +309,23 @@ struct MainTabView_Previews: PreviewProvider {
             watchlistManager: WatchlistManager()
         )
 
+        // Apple TV tab bar preview
+        VStack {
+            Spacer()
+            AppleTVTabBar(selectedTab: .constant(.home))
+        }
+        .background(Color.appBackground)
+        .preferredColorScheme(.dark)
+        .previewDisplayName("Apple TV Tab Bar")
+
         // Glass tab bar preview
         VStack {
             Spacer()
-            GlassTabBar(selectedTab: .constant(.discover))
+            GlassTabBar(selectedTab: .constant(.swipe))
         }
+        .background(Color.appBackground)
+        .preferredColorScheme(.dark)
         .previewDisplayName("Glass Tab Bar")
-
-        // Pill tab bar preview
-        VStack {
-            Spacer()
-            PillTabBar(selectedTab: .constant(.swipe))
-                .padding(.bottom, 30)
-        }
-        .previewDisplayName("Pill Tab Bar")
     }
 }
 #endif

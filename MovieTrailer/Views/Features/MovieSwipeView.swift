@@ -93,9 +93,9 @@ struct MovieSwipeView: View {
     private var backgroundGradient: some View {
         LinearGradient(
             colors: [
-                Color(.systemBackground),
-                Color(.systemBackground).opacity(0.95),
-                Color.accentStart.opacity(0.1)
+                Color.appBackground,
+                Color.appBackground,
+                Color.accentPrimary.opacity(0.05)
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -109,23 +109,17 @@ struct MovieSwipeView: View {
         VStack(spacing: Spacing.xs) {
             Text("\(viewModel.remainingCount) movies left")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
 
             // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color(.systemGray5))
+                        .fill(Color.surfaceElevated)
                         .frame(height: 4)
 
                     Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [.accentStart, .accentEnd],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .fill(Color.accentPrimary)
                         .frame(
                             width: max(0, geometry.size.width * progressPercentage),
                             height: 4
@@ -243,10 +237,11 @@ struct MovieSwipeView: View {
         VStack(spacing: Spacing.lg) {
             ProgressView()
                 .scaleEffect(1.5)
+                .tint(.textSecondary)
 
             Text("Finding movies for you...")
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
         }
     }
 
@@ -260,10 +255,11 @@ struct MovieSwipeView: View {
 
             Text("Couldn't load movies")
                 .font(.headline)
+                .foregroundColor(.textPrimary)
 
             Text(error.errorDescription ?? "Please try again")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
 
             Button(action: {
                 Task {
@@ -272,10 +268,10 @@ struct MovieSwipeView: View {
             }) {
                 Text("Try Again")
                     .font(.buttonMedium)
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.horizontal, Spacing.xl)
                     .padding(.vertical, Spacing.sm)
-                    .background(Color.accentStart)
+                    .background(Color.playButton)
                     .clipShape(Capsule())
             }
         }
@@ -292,10 +288,11 @@ struct MovieSwipeView: View {
 
             Text("You've seen them all!")
                 .font(.title2.bold())
+                .foregroundColor(.textPrimary)
 
             Text("You liked \(viewModel.likedMovies.count) movies")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
 
             HStack(spacing: Spacing.md) {
                 Button(action: {
@@ -303,10 +300,10 @@ struct MovieSwipeView: View {
                 }) {
                     Text("View Stats")
                         .font(.buttonMedium)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.textPrimary)
                         .padding(.horizontal, Spacing.xl)
                         .padding(.vertical, Spacing.sm)
-                        .background(Color(.systemGray5))
+                        .background(Color.surfaceElevated)
                         .clipShape(Capsule())
                 }
 
@@ -317,10 +314,10 @@ struct MovieSwipeView: View {
                 }) {
                     Text("Start Over")
                         .font(.buttonMedium)
-                        .foregroundColor(.white)
+                        .foregroundColor(.black)
                         .padding(.horizontal, Spacing.xl)
                         .padding(.vertical, Spacing.sm)
-                        .background(Color.accentStart)
+                        .background(Color.playButton)
                         .clipShape(Capsule())
                 }
             }
@@ -440,14 +437,15 @@ struct SwipeStatsSheet: View {
 
             Text(value)
                 .font(.title.bold())
+                .foregroundColor(.textPrimary)
 
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(Spacing.lg)
-        .background(Color(.systemGray6))
+        .background(Color.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
     }
 
@@ -458,10 +456,11 @@ struct SwipeStatsSheet: View {
                     .foregroundColor(color)
                 Text(title)
                     .font(.headline)
+                    .foregroundColor(.textPrimary)
                 Spacer()
                 Text("\(movies.count)")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.textSecondary)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {

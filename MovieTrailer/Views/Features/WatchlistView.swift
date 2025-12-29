@@ -21,13 +21,16 @@ struct WatchlistView: View {
     
     var body: some View {
         ZStack {
+            Color.appBackground.ignoresSafeArea()
+
             if viewModel.isEmpty {
                 emptyStateView
             } else {
                 watchlistContent
             }
         }
-        .navigationTitle("Watchlist")
+        .preferredColorScheme(.dark)
+        .navigationTitle("Library")
         .toolbar {
             if !viewModel.isEmpty {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -84,57 +87,43 @@ struct WatchlistView: View {
     }
     
     // MARK: - Stats Banner
-    
+
     private var statsBanner: some View {
         HStack(spacing: 20) {
             VStack(spacing: 4) {
                 Text("\(viewModel.count)")
                     .font(.title.bold())
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.purple, .pink],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
+                    .foregroundColor(.accentPrimary)
                 Text("Movies")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.textSecondary)
             }
-            
+
             Divider()
                 .frame(height: 40)
-            
+                .overlay(Color.separator)
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
                     Image(systemName: "bookmark.fill")
                         .font(.caption2)
-                        .foregroundColor(.yellow)
+                        .foregroundColor(.accentPrimary)
                     Text("Sorted by")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.textSecondary)
                 }
                 Text(viewModel.sortOption.displayName)
                     .font(.subheadline.bold())
+                    .foregroundColor(.textPrimary)
             }
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
+                .fill(Color.surfaceElevated)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.2),
-                                    Color.white.opacity(0.05)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                        .stroke(Color.separator, lineWidth: 0.5)
                 )
         )
         .padding(.horizontal)
@@ -171,25 +160,20 @@ struct WatchlistView: View {
     }
     
     // MARK: - Empty State
-    
+
     private var emptyStateView: some View {
         VStack(spacing: 24) {
             Image(systemName: "bookmark.slash")
                 .font(.system(size: 80))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.purple, .pink],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            Text("Your Watchlist is Empty")
+                .foregroundColor(.textSecondary)
+
+            Text("Your Library is Empty")
                 .font(.title2.bold())
-            
-            Text("Start adding movies to your watchlist to keep track of what you want to watch!")
+                .foregroundColor(.textPrimary)
+
+            Text("Start adding movies to your library to keep track of what you want to watch!")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
         }
@@ -200,12 +184,12 @@ struct WatchlistView: View {
 // MARK: - Watchlist Item Row
 
 struct WatchlistItemRow: View {
-    
+
     let item: WatchlistItem
     let onTap: () -> Void
     let onDelete: () -> Void
     let onStartLiveActivity: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
@@ -216,58 +200,52 @@ struct WatchlistItemRow: View {
                         .aspectRatio(contentMode: .fill)
                 } placeholder: {
                     Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(Color.surfaceElevated)
                 }
                 .frame(width: 60, height: 90)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                
+
                 // Info
                 VStack(alignment: .leading, spacing: 6) {
                     Text(item.title)
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.textPrimary)
                         .lineLimit(2)
-                    
+
                     if let year = item.releaseYear {
                         Text(year)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.textSecondary)
                     }
-                    
+
                     HStack(spacing: 4) {
                         Image(systemName: "star.fill")
                             .font(.caption2)
                             .foregroundColor(.yellow)
-                        
+
                         Text(item.formattedRating)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.textSecondary)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 // Live Activity button
                 Button(action: onStartLiveActivity) {
                     Image(systemName: "bell.badge")
                         .font(.title3)
-                        .foregroundColor(.purple)
+                        .foregroundColor(.accentPrimary)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(.ultraThinMaterial)
+                    .fill(Color.surfaceElevated)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            .stroke(Color.separator, lineWidth: 0.5)
                     )
             )
         }

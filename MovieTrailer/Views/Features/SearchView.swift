@@ -41,6 +41,8 @@ struct SearchView: View {
                 searchResultsView
             }
         }
+        .background(Color.appBackground)
+        .preferredColorScheme(.dark)
         .navigationTitle("Search")
         // MARK: - Keyboard Dismissal
         .onTapGesture {
@@ -71,10 +73,11 @@ struct SearchView: View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.textSecondary)
 
                 TextField("Search movies...", text: $viewModel.searchQuery)
                     .textFieldStyle(.plain)
+                    .foregroundColor(.textPrimary)
                     .focused($isSearchFocused)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -96,7 +99,7 @@ struct SearchView: View {
                         isSearchFocused = true
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.textSecondary)
                     }
                     .accessibilityLabel("Clear search")
                     .accessibilityHint("Double tap to clear search text")
@@ -105,7 +108,7 @@ struct SearchView: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(uiColor: .systemGray6))
+                    .fill(Color.surfaceElevated)
             )
 
             // Cancel button when keyboard is active
@@ -115,7 +118,7 @@ struct SearchView: View {
                     dismissKeyboard()
                     viewModel.clearSearch()
                 }
-                .foregroundColor(.blue)
+                .foregroundColor(.accentPrimary)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
@@ -133,7 +136,7 @@ struct SearchView: View {
                 HStack {
                     Text("\(viewModel.searchResults.count) results")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.textSecondary)
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -192,21 +195,16 @@ struct SearchView: View {
         VStack(spacing: 24) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 80))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.blue, .purple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .foregroundColor(.textSecondary)
                 .accessibilityHidden(true)
 
             Text("Search for Movies")
                 .font(.title2.bold())
+                .foregroundColor(.textPrimary)
 
             Text("Find your favorite movies, discover new ones, and add them to your watchlist")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
 
@@ -214,7 +212,7 @@ struct SearchView: View {
             VStack(spacing: 12) {
                 Text("Popular Searches")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.textTertiary)
                     .textCase(.uppercase)
 
                 HStack(spacing: 8) {
@@ -226,12 +224,12 @@ struct SearchView: View {
                         } label: {
                             Text(suggestion)
                                 .font(.subheadline)
-                                .foregroundColor(.primary)
+                                .foregroundColor(.textPrimary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
                                 .background(
                                     Capsule()
-                                        .fill(Color(uiColor: .systemGray5))
+                                        .fill(Color.surfaceElevated)
                                 )
                         }
                         .buttonStyle(ScaleButtonStyle())
@@ -252,21 +250,16 @@ struct SearchView: View {
         VStack(spacing: 24) {
             Image(systemName: "film.stack")
                 .font(.system(size: 80))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.gray, .secondary],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .foregroundColor(.textTertiary)
                 .accessibilityHidden(true)
 
             Text("No Results Found")
                 .font(.title2.bold())
+                .foregroundColor(.textPrimary)
 
             Text("No movies found for \"\(viewModel.searchQuery)\"")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
 
@@ -277,20 +270,13 @@ struct SearchView: View {
             } label: {
                 Text("Clear Search")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
                     .background(
                         Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
+                            .fill(Color.playButton)
                     )
-                    .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
             }
             .buttonStyle(ScaleButtonStyle())
             .accessibilityHint("Double tap to clear search and try again")

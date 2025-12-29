@@ -3,7 +3,7 @@
 //  MovieTrailer
 //
 //  Created by Claude Code on 28/12/2025.
-//  Floating glass-effect tab bar
+//  Apple TV-inspired tab bar
 //
 
 import SwiftUI
@@ -11,42 +11,98 @@ import SwiftUI
 // MARK: - Tab Definition
 
 enum AppTab: String, CaseIterable, Identifiable {
-    case discover = "Discover"
+    case home = "Home"
     case swipe = "Swipe"
     case search = "Search"
-    case watchlist = "Watchlist"
+    case library = "Library"
 
     var id: String { rawValue }
 
+    var tabIndex: Int {
+        switch self {
+        case .home: return 0
+        case .swipe: return 1
+        case .search: return 2
+        case .library: return 3
+        }
+    }
+
+    static func from(index: Int) -> AppTab {
+        switch index {
+        case 0: return .home
+        case 1: return .swipe
+        case 2: return .search
+        case 3: return .library
+        default: return .home
+        }
+    }
+
     var icon: String {
         switch self {
-        case .discover: return "sparkles"
+        case .home: return "house"
         case .swipe: return "rectangle.stack"
         case .search: return "magnifyingglass"
-        case .watchlist: return "bookmark"
+        case .library: return "books.vertical"
         }
     }
 
     var selectedIcon: String {
         switch self {
-        case .discover: return "sparkles"
+        case .home: return "house.fill"
         case .swipe: return "rectangle.stack.fill"
         case .search: return "magnifyingglass"
-        case .watchlist: return "bookmark.fill"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .discover: return .purple
-        case .swipe: return .pink
-        case .search: return .blue
-        case .watchlist: return .orange
+        case .library: return "books.vertical.fill"
         }
     }
 }
 
-// MARK: - Glass Tab Bar
+// MARK: - Apple TV Tab Bar
+
+struct AppleTVTabBar: View {
+
+    @Binding var selectedTab: AppTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(AppTab.allCases) { tab in
+                tabButton(for: tab)
+            }
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+        .background(
+            Rectangle()
+                .fill(Color.appBackground)
+                .shadow(color: .black.opacity(0.5), radius: 10, y: -5)
+        )
+    }
+
+    private func tabButton(for tab: AppTab) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                Haptics.shared.tabTapped()
+                selectedTab = tab
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: selectedTab == tab ? tab.selectedIcon : tab.icon)
+                    .font(.system(size: 22, weight: .regular))
+                    .foregroundColor(selectedTab == tab ? .accentPrimary : .textTertiary)
+
+                Text(tab.rawValue)
+                    .font(.caption2)
+                    .foregroundColor(selectedTab == tab ? .accentPrimary : .textTertiary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tab.rawValue)
+        .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
+    }
+}
+
+// MARK: - Glass Tab Bar (Alternative)
 
 struct GlassTabBar: View {
 
@@ -66,8 +122,6 @@ struct GlassTabBar: View {
         .padding(.bottom, Spacing.sm)
     }
 
-    // MARK: - Tab Button
-
     private func tabButton(for tab: AppTab) -> some View {
         Button {
             withAnimation(AppTheme.Animation.bouncy) {
@@ -77,26 +131,23 @@ struct GlassTabBar: View {
         } label: {
             VStack(spacing: Spacing.xxs) {
                 ZStack {
-                    // Selection background
                     if selectedTab == tab {
                         RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                            .fill(tab.color.opacity(0.15))
+                            .fill(Color.accentPrimary.opacity(0.15))
                             .frame(width: 56, height: 36)
                             .matchedGeometryEffect(id: "tabBackground", in: animation)
                     }
 
-                    // Icon
                     Image(systemName: selectedTab == tab ? tab.selectedIcon : tab.icon)
                         .font(.system(size: 20, weight: selectedTab == tab ? .semibold : .regular))
-                        .foregroundColor(selectedTab == tab ? tab.color : .secondary)
+                        .foregroundColor(selectedTab == tab ? .accentPrimary : .textTertiary)
                         .symbolEffect(.bounce, value: selectedTab == tab)
                 }
                 .frame(height: 36)
 
-                // Label
                 Text(tab.rawValue)
                     .font(.caption2.weight(selectedTab == tab ? .semibold : .regular))
-                    .foregroundColor(selectedTab == tab ? tab.color : .secondary)
+                    .foregroundColor(selectedTab == tab ? .accentPrimary : .textTertiary)
             }
             .frame(maxWidth: .infinity)
         }
@@ -105,31 +156,18 @@ struct GlassTabBar: View {
         .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
     }
 
-    // MARK: - Glass Background
-
     private var glassBackground: some View {
         RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl)
-            .fill(.ultraThinMaterial)
+            .fill(Color.surfaceElevated.opacity(0.95))
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.3),
-                                Color.white.opacity(0.1),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 0.5
-                    )
+                    .stroke(Color.separator, lineWidth: 0.5)
             )
-            .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
+            .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
     }
 }
 
-// MARK: - Pill Tab Bar (Compact Alternative)
+// MARK: - Pill Tab Bar
 
 struct PillTabBar: View {
 
@@ -146,8 +184,8 @@ struct PillTabBar: View {
         .padding(.horizontal, Spacing.lg)
         .background(
             Capsule()
-                .fill(.ultraThickMaterial)
-                .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
+                .fill(Color.surfaceElevated)
+                .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
         )
     }
 
@@ -161,12 +199,11 @@ struct PillTabBar: View {
             VStack(spacing: 4) {
                 Image(systemName: selectedTab == tab ? tab.selectedIcon : tab.icon)
                     .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
-                    .foregroundColor(selectedTab == tab ? tab.color : .secondary)
+                    .foregroundColor(selectedTab == tab ? .accentPrimary : .textTertiary)
                     .scaleEffect(selectedTab == tab ? 1.1 : 1.0)
 
-                // Indicator dot
                 Circle()
-                    .fill(selectedTab == tab ? tab.color : Color.clear)
+                    .fill(selectedTab == tab ? Color.accentPrimary : Color.clear)
                     .frame(width: 5, height: 5)
             }
             .frame(width: 50)
@@ -190,7 +227,7 @@ struct TabBarContainer<Content: View>: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             content
-                .padding(.bottom, 80) // Space for tab bar
+                .padding(.bottom, 80)
 
             GlassTabBar(selectedTab: $selectedTab)
         }
@@ -205,13 +242,14 @@ struct GlassTabBar_Previews: PreviewProvider {
         VStack {
             Spacer()
 
-            GlassTabBar(selectedTab: .constant(.discover))
+            AppleTVTabBar(selectedTab: .constant(.home))
 
             Spacer().frame(height: 40)
 
-            PillTabBar(selectedTab: .constant(.swipe))
+            GlassTabBar(selectedTab: .constant(.swipe))
         }
-        .background(Color(.systemBackground))
+        .background(Color.appBackground)
+        .preferredColorScheme(.dark)
     }
 }
 #endif

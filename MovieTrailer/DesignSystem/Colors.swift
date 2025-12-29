@@ -3,7 +3,7 @@
 //  MovieTrailer
 //
 //  Created by Claude Code on 28/12/2025.
-//  Apple 2025 Color System
+//  Apple TV-inspired dark cinematic color system
 //
 
 import SwiftUI
@@ -12,79 +12,94 @@ import SwiftUI
 
 extension Color {
 
-    // MARK: - Brand Colors
+    // MARK: - Background Colors (Dark Theme)
 
-    /// Primary accent gradient start
-    static let accentStart = Color(hex: "FF6B6B")
+    /// Pure black background like Apple TV
+    static let appBackground = Color.black
 
-    /// Primary accent gradient end
-    static let accentEnd = Color(hex: "FF8E53")
+    /// Slightly elevated surface
+    static let surfaceElevated = Color(white: 0.08)
 
-    /// Primary accent gradient
-    static let accentGradient = LinearGradient(
-        colors: [accentStart, accentEnd],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    /// Card background
+    static let cardBackground = Color(white: 0.12)
 
-    // MARK: - Category Colors
+    /// Subtle separator
+    static let separator = Color(white: 0.2)
 
-    static let categoryNew = Color(hex: "FF6B6B")       // Coral Red
-    static let categoryClassics = Color(hex: "A78BFA")  // Purple
-    static let categoryTV = Color(hex: "60A5FA")        // Blue
-    static let categoryAnimation = Color(hex: "34D399") // Green
-    static let categoryAction = Color(hex: "F59E0B")    // Amber
-    static let categoryComedy = Color(hex: "EC4899")    // Pink
-    static let categoryDrama = Color(hex: "6366F1")     // Indigo
-    static let categoryHorror = Color(hex: "EF4444")    // Red
-    static let categorySciFi = Color(hex: "06B6D4")     // Cyan
-    static let categoryRomance = Color(hex: "F472B6")   // Rose
-    static let categoryThriller = Color(hex: "8B5CF6")  // Violet
-    static let categoryDocumentary = Color(hex: "10B981") // Emerald
+    // MARK: - Text Colors
 
-    // MARK: - Semantic Colors
+    /// Primary text - pure white
+    static let textPrimary = Color.white
 
-    /// Success state color
-    static let success = Color(hex: "22C55E")
+    /// Secondary text - muted white
+    static let textSecondary = Color(white: 0.7)
 
-    /// Warning state color
-    static let warning = Color(hex: "F59E0B")
+    /// Tertiary text - very muted
+    static let textTertiary = Color(white: 0.5)
 
-    /// Error state color
-    static let error = Color(hex: "EF4444")
+    // MARK: - Accent Colors
 
-    /// Info state color
-    static let info = Color(hex: "3B82F6")
+    /// Primary accent - Apple TV blue
+    static let accentPrimary = Color(red: 0.0, green: 0.48, blue: 1.0)
+
+    /// Gradient start
+    static let accentStart = Color(red: 0.4, green: 0.2, blue: 1.0)
+
+    /// Gradient end
+    static let accentEnd = Color(red: 1.0, green: 0.4, blue: 0.6)
+
+    // MARK: - Action Colors
+
+    /// Play button background
+    static let playButton = Color.white
+
+    /// Add to list button
+    static let addButton = Color(white: 0.25)
+
+    // MARK: - Badge Colors
+
+    /// "New" badge background
+    static let badgeNew = Color(white: 0.2)
+
+    /// Rating star
+    static let ratingStar = Color.yellow
 
     // MARK: - Swipe Colors
 
-    /// Like/Save swipe color
-    static let swipeLike = Color(hex: "22C55E")
+    static let swipeLike = Color(red: 0.13, green: 0.77, blue: 0.37)
+    static let swipeSkip = Color(red: 0.94, green: 0.27, blue: 0.27)
+    static let swipeSuperLike = Color(red: 0.0, green: 0.66, blue: 1.0)
+    static let swipeSeen = Color(red: 0.23, green: 0.51, blue: 0.96)
 
-    /// Skip/Nope swipe color
-    static let swipeSkip = Color(hex: "EF4444")
+    // MARK: - Category Colors
 
-    /// Super like swipe color
-    static let swipeSuperLike = Color(hex: "F59E0B")
+    static let categoryNew = Color(hex: "FF6B6B")
+    static let categoryClassics = Color(hex: "A78BFA")
+    static let categoryTV = Color(hex: "60A5FA")
+    static let categoryAnimation = Color(hex: "34D399")
+    static let categoryAction = Color(hex: "F59E0B")
+    static let categoryComedy = Color(hex: "EC4899")
+    static let categoryDrama = Color(hex: "6366F1")
+    static let categoryHorror = Color(hex: "EF4444")
+    static let categorySciFi = Color(hex: "06B6D4")
+    static let categoryRomance = Color(hex: "F472B6")
+    static let categoryThriller = Color(hex: "8B5CF6")
+    static let categoryDocumentary = Color(hex: "10B981")
 
-    /// Already seen swipe color
-    static let swipeSeen = Color(hex: "3B82F6")
+    // MARK: - Semantic Colors
+
+    static let success = Color(hex: "22C55E")
+    static let warning = Color(hex: "F59E0B")
+    static let error = Color(hex: "EF4444")
+    static let info = Color(hex: "3B82F6")
 
     // MARK: - Rating Colors
 
-    /// Excellent rating (8+)
     static let ratingExcellent = Color(hex: "22C55E")
-
-    /// Good rating (6-8)
     static let ratingGood = Color(hex: "F59E0B")
-
-    /// Average rating (4-6)
     static let ratingAverage = Color(hex: "F97316")
-
-    /// Poor rating (<4)
     static let ratingPoor = Color(hex: "EF4444")
 
-    /// Get rating color based on score
     static func rating(for score: Double) -> Color {
         switch score {
         case 8...10: return .ratingExcellent
@@ -100,10 +115,16 @@ extension Color {
     static let disneyPlus = Color(hex: "113CCF")
     static let amazonPrime = Color(hex: "00A8E1")
     static let hboMax = Color(hex: "5822B4")
-    static let appleTVPlus = Color(hex: "000000")
+    static let appleTVPlus = Color(white: 0.15)
     static let hulu = Color(hex: "1CE783")
-    static let peacock = Color(hex: "000000")
+    static let peacock = Color(white: 0.15)
     static let paramount = Color(hex: "0064FF")
+
+    // MARK: - Top 10 Ranking Colors
+
+    static let ranking1 = Color(hex: "FFD700")  // Gold
+    static let ranking2 = Color(hex: "C0C0C0")  // Silver
+    static let ranking3 = Color(hex: "CD7F32")  // Bronze
 }
 
 // MARK: - Hex Color Extension
@@ -115,21 +136,21 @@ extension Color {
         Scanner(string: hex).scanHexInt64(&int)
         let a, r, g, b: UInt64
         switch hex.count {
-        case 3: // RGB (12-bit)
+        case 3:
             (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
+        case 6:
             (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
+        case 8:
             (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
         default:
-            (a, r, g, b) = (1, 1, 1, 0)
+            (a, r, g, b) = (255, 0, 0, 0)
         }
 
         self.init(
             .sRGB,
             red: Double(r) / 255,
             green: Double(g) / 255,
-            blue:  Double(b) / 255,
+            blue: Double(b) / 255,
             opacity: Double(a) / 255
         )
     }
@@ -138,21 +159,41 @@ extension Color {
 // MARK: - Gradient Presets
 
 extension LinearGradient {
-    /// Primary brand gradient
-    static let accent = LinearGradient(
-        colors: [.accentStart, .accentEnd],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
+
+    /// Hero overlay gradient - heavy at bottom for text
+    static let heroOverlay = LinearGradient(
+        colors: [
+            .black,
+            .black.opacity(0.9),
+            .black.opacity(0.5),
+            .clear
+        ],
+        startPoint: .bottom,
+        endPoint: .top
     )
 
-    /// Overlay gradient for cards (bottom fade)
+    /// Card overlay gradient
     static let cardOverlay = LinearGradient(
-        colors: [.clear, .black.opacity(0.7)],
-        startPoint: .center,
+        colors: [.black.opacity(0.8), .black.opacity(0.3), .clear],
+        startPoint: .bottom,
+        endPoint: .center
+    )
+
+    /// Top safe area overlay
+    static let topOverlay = LinearGradient(
+        colors: [.black.opacity(0.5), .clear],
+        startPoint: .top,
         endPoint: .bottom
     )
 
-    /// Full card overlay gradient
+    /// Accent gradient
+    static let accent = LinearGradient(
+        colors: [.accentStart, .accentEnd],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+
+    /// Full overlay gradient
     static let fullOverlay = LinearGradient(
         colors: [.black.opacity(0.3), .black.opacity(0.7)],
         startPoint: .top,
