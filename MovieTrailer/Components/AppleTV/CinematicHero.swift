@@ -2,8 +2,8 @@
 //  CinematicHero.swift
 //  MovieTrailer
 //
-//  Created by Claude Code on 29/12/2025.
-//  Apple TV-style cinematic hero banner
+//  Apple 2025 Premium Cinematic Hero
+//  Full-bleed hero banner with auto-rotation
 //
 
 import SwiftUI
@@ -17,27 +17,65 @@ struct CinematicHero: View {
     let onPlay: () -> Void
     let onAddToList: () -> Void
     let onTap: () -> Void
+    let isInWatchlist: Bool
+
+    @State private var parallaxOffset: CGFloat = 0
+    @State private var addedAnimating = false
+
+    init(
+        movie: Movie,
+        onPlay: @escaping () -> Void,
+        onAddToList: @escaping () -> Void,
+        onTap: @escaping () -> Void,
+        isInWatchlist: Bool = false
+    ) {
+        self.movie = movie
+        self.onPlay = onPlay
+        self.onAddToList = onAddToList
+        self.onTap = onTap
+        self.isInWatchlist = isInWatchlist
+    }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
-                // Background image
+                // Background image with parallax
                 heroImage(size: geometry.size)
+                    .offset(y: parallaxOffset * 0.3)
 
-                // Gradient overlay
-                LinearGradient.heroOverlay
-                    .frame(height: geometry.size.height * 0.7)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
+                // Vignette overlay
+                RadialGradient(
+                    colors: [.clear, .black.opacity(0.2), .black.opacity(0.5)],
+                    center: .center,
+                    startRadius: 100,
+                    endRadius: geometry.size.width
+                )
 
-                // Content
+                // Bottom gradient for content
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        .black.opacity(0.4),
+                        .black.opacity(0.8),
+                        .black.opacity(0.95),
+                        .black
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: geometry.size.height * 0.6)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+
+                // Content overlay
                 heroContent
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, Spacing.horizontal)
+                    .padding(.bottom, Spacing.lg)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
-        .aspectRatio(0.7, contentMode: .fit)
+        .frame(height: Size.heroHeight)
         .onTapGesture {
+            Haptics.shared.cardTapped()
             onTap()
         }
     }
@@ -48,80 +86,157 @@ struct CinematicHero: View {
         KFImage(movie.backdropURL ?? movie.posterURL)
             .placeholder {
                 Rectangle()
-                    .fill(Color.surfaceElevated)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.surfacePrimary, Color.surfaceSecondary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shimmer(isActive: true)
             }
             .resizable()
             .aspectRatio(contentMode: .fill)
-            .frame(width: size.width, height: size.height)
+            .frame(width: size.width, height: size.height * 1.1)
             .clipped()
     }
 
     // MARK: - Hero Content
 
     private var heroContent: some View {
-        VStack(alignment: .center, spacing: 16) {
-            // "New" badge
-            Text("New")
-                .font(.caption.weight(.semibold))
-                .foregroundColor(.textPrimary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(Color.badgeNew)
-                .clipShape(Capsule())
+        VStack(spacing: Spacing.md) {
+            Spacer()
 
-            // Movie logo or title
+            // Title
             Text(movie.title)
-                .font(.system(size: 32, weight: .bold, design: .default))
+                .font(.displayMedium)
                 .foregroundColor(.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
-                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                .shadow(color: .black.opacity(0.6), radius: 8, x: 0, y: 4)
+
+            // Metadata row
+            metadataRow
 
             // Genre tags
             if let genres = movie.genreNames, !genres.isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "film")
-                        .font(.caption)
-                    Text(genres.prefix(3).joined(separator: " · "))
-                        .font(.subheadline)
-                }
-                .foregroundColor(.textSecondary)
+                genreTags(genres: Array(genres.prefix(3)))
             }
 
             // Action buttons
-            HStack(spacing: 16) {
-                // Play button
-                Button(action: {
-                    Haptics.shared.mediumImpact()
-                    onPlay()
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "play.fill")
-                            .font(.body.weight(.semibold))
-                        Text("Play")
-                            .font(.body.weight(.semibold))
-                    }
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 12)
-                    .background(Color.playButton)
-                    .clipShape(Capsule())
-                }
+            actionButtons
+        }
+    }
 
-                // Add to list button
-                Button(action: {
-                    Haptics.shared.lightImpact()
-                    onAddToList()
-                }) {
-                    Image(systemName: "plus")
-                        .font(.body.weight(.semibold))
-                        .foregroundColor(.textPrimary)
-                        .frame(width: 44, height: 44)
-                        .background(Color.addButton)
-                        .clipShape(Circle())
-                }
+    private var metadataRow: some View {
+        HStack(spacing: Spacing.md) {
+            // Rating
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: "star.fill")
+                    .foregroundColor(.ratingStar)
+                Text(movie.formattedRating)
+                    .fontWeight(.bold)
+            }
+            .font(.labelLarge)
+            .foregroundColor(.textPrimary)
+
+            // Separator
+            Circle()
+                .fill(Color.textTertiary)
+                .frame(width: 4, height: 4)
+
+            // Year
+            if let year = movie.releaseYear {
+                Text(year)
+                    .font(.labelLarge)
+                    .foregroundColor(.textSecondary)
+            }
+
+            // Separator
+            if movie.voteCount > 0 {
+                Circle()
+                    .fill(Color.textTertiary)
+                    .frame(width: 4, height: 4)
+
+                // Vote count
+                Text(formatVoteCount(movie.voteCount))
+                    .font(.labelMedium)
+                    .foregroundColor(.textTertiary)
             }
         }
+    }
+
+    private func genreTags(genres: [String]) -> some View {
+        HStack(spacing: Spacing.xs) {
+            ForEach(genres, id: \.self) { genre in
+                Text(genre)
+                    .font(.pillSmall)
+                    .foregroundColor(.textPrimary)
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.vertical, Spacing.xxs)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+            }
+        }
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: Spacing.md) {
+            // Watch Trailer button
+            Button {
+                Haptics.shared.buttonTapped()
+                onPlay()
+            } label: {
+                HStack(spacing: Spacing.xs) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("Watch Trailer")
+                        .font(.buttonMedium)
+                }
+                .foregroundColor(.textInverted)
+                .padding(.horizontal, Spacing.xl)
+                .padding(.vertical, Spacing.sm)
+                .background(Color.white)
+                .clipShape(Capsule())
+                .shadow(color: .white.opacity(0.3), radius: 8, x: 0, y: 0)
+            }
+            .buttonStyle(ScaleButtonStyle())
+
+            // Add to list button
+            Button {
+                Haptics.shared.addedToWatchlist()
+                withAnimation(AppTheme.Animation.bouncy) {
+                    addedAnimating = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    withAnimation(AppTheme.Animation.standard) {
+                        addedAnimating = false
+                    }
+                }
+                onAddToList()
+            } label: {
+                Image(systemName: isInWatchlist ? "checkmark" : "plus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                    .scaleEffect(addedAnimating ? 1.3 : 1.0)
+                    .frame(width: Size.actionButtonMedium, height: Size.actionButtonMedium)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.glassBorder, lineWidth: 0.5)
+                    )
+            }
+            .buttonStyle(ScaleButtonStyle())
+        }
+        .padding(.top, Spacing.sm)
+    }
+
+    private func formatVoteCount(_ count: Int) -> String {
+        if count >= 1000 {
+            return String(format: "%.1fK reviews", Double(count) / 1000)
+        }
+        return "\(count) reviews"
     }
 }
 
@@ -133,12 +248,28 @@ struct CinematicHeroCarousel: View {
     let onPlay: (Movie) -> Void
     let onAddToList: (Movie) -> Void
     let onTap: (Movie) -> Void
+    let watchlistChecker: ((Movie) -> Bool)?
 
     @State private var currentIndex = 0
-    private let timer = Timer.publish(every: 6, on: .main, in: .common).autoconnect()
+    @State private var isAutoPlaying = true
+    private let timer = Timer.publish(every: AppTheme.Duration.carousel, on: .main, in: .common).autoconnect()
+
+    init(
+        movies: [Movie],
+        onPlay: @escaping (Movie) -> Void,
+        onAddToList: @escaping (Movie) -> Void,
+        onTap: @escaping (Movie) -> Void,
+        watchlistChecker: ((Movie) -> Bool)? = nil
+    ) {
+        self.movies = movies
+        self.onPlay = onPlay
+        self.onAddToList = onAddToList
+        self.onTap = onTap
+        self.watchlistChecker = watchlistChecker
+    }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
             // Carousel
             TabView(selection: $currentIndex) {
                 ForEach(Array(movies.prefix(5).enumerated()), id: \.element.id) { index, movie in
@@ -146,30 +277,151 @@ struct CinematicHeroCarousel: View {
                         movie: movie,
                         onPlay: { onPlay(movie) },
                         onAddToList: { onAddToList(movie) },
-                        onTap: { onTap(movie) }
+                        onTap: { onTap(movie) },
+                        isInWatchlist: watchlistChecker?(movie) ?? false
                     )
                     .tag(index)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(height: Size.heroHeight)
 
             // Page indicators
-            HStack(spacing: 8) {
-                ForEach(0..<min(movies.count, 5), id: \.self) { index in
-                    Circle()
-                        .fill(currentIndex == index ? Color.textPrimary : Color.textTertiary)
-                        .frame(width: 8, height: 8)
-                        .scaleEffect(currentIndex == index ? 1.0 : 0.7)
-                        .animation(.easeInOut(duration: 0.2), value: currentIndex)
-                }
-            }
-            .padding(.bottom, 8)
+            pageIndicators
+                .padding(.top, -Spacing.xl)
+                .zIndex(1)
         }
         .onReceive(timer) { _ in
-            withAnimation(.easeInOut(duration: 0.5)) {
-                currentIndex = (currentIndex + 1) % min(movies.count, 5)
+            guard isAutoPlaying else { return }
+            advanceCarousel()
+        }
+        .gesture(
+            DragGesture()
+                .onChanged { _ in
+                    isAutoPlaying = false
+                }
+                .onEnded { _ in
+                    // Resume auto-play after 10 seconds of inactivity
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                        isAutoPlaying = true
+                    }
+                }
+        )
+    }
+
+    private var pageIndicators: some View {
+        HStack(spacing: Spacing.sm) {
+            ForEach(0..<min(movies.count, 5), id: \.self) { index in
+                Button {
+                    Haptics.shared.selectionChanged()
+                    withAnimation(AppTheme.Animation.carousel) {
+                        currentIndex = index
+                    }
+                    isAutoPlaying = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                        isAutoPlaying = true
+                    }
+                } label: {
+                    Capsule()
+                        .fill(currentIndex == index ? Color.white : Color.textTertiary)
+                        .frame(width: currentIndex == index ? 24 : 8, height: 8)
+                        .animation(AppTheme.Animation.smooth, value: currentIndex)
+                }
+                .buttonStyle(.plain)
             }
         }
+        .padding(.vertical, Spacing.md)
+        .padding(.horizontal, Spacing.lg)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+    }
+
+    private func advanceCarousel() {
+        withAnimation(AppTheme.Animation.carousel) {
+            currentIndex = (currentIndex + 1) % min(movies.count, 5)
+        }
+    }
+}
+
+// MARK: - Compact Hero (For smaller displays)
+
+struct CompactHero: View {
+
+    let movie: Movie
+    let onTap: () -> Void
+    let onTrailerTap: () -> Void
+
+    var body: some View {
+        Button {
+            Haptics.shared.cardTapped()
+            onTap()
+        } label: {
+            ZStack(alignment: .bottomLeading) {
+                // Background
+                KFImage(movie.backdropURL ?? movie.posterURL)
+                    .placeholder {
+                        Rectangle()
+                            .fill(Color.surfaceSecondary)
+                    }
+                    .resizable()
+                    .aspectRatio(AspectRatio.backdrop, contentMode: .fill)
+                    .frame(height: Size.heroHeightCompact)
+
+                // Gradient
+                LinearGradient.heroOverlay
+
+                // Content
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    Spacer()
+
+                    Text(movie.title)
+                        .font(.headline2)
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(2)
+
+                    HStack(spacing: Spacing.sm) {
+                        // Rating
+                        HStack(spacing: Spacing.xxs) {
+                            Image(systemName: "star.fill")
+                                .foregroundColor(.ratingStar)
+                            Text(movie.formattedRating)
+                        }
+                        .font(.labelMedium)
+
+                        if let year = movie.releaseYear {
+                            Text("•")
+                                .foregroundColor(.textTertiary)
+                            Text(year)
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+                    .font(.labelMedium)
+                    .foregroundColor(.textPrimary)
+
+                    // Trailer button
+                    Button {
+                        Haptics.shared.buttonTapped()
+                        onTrailerTap()
+                    } label: {
+                        HStack(spacing: Spacing.xs) {
+                            Image(systemName: "play.fill")
+                            Text("Trailer")
+                        }
+                        .font(.buttonSmall)
+                        .foregroundColor(.textInverted)
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                        .background(Color.white)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+                }
+                .padding(Spacing.lg)
+            }
+            .frame(height: Size.heroHeightCompact)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl, style: .continuous))
+        }
+        .buttonStyle(CardButtonStyle())
     }
 }
 
@@ -178,16 +430,24 @@ struct CinematicHeroCarousel: View {
 #if DEBUG
 struct CinematicHero_Previews: PreviewProvider {
     static var previews: some View {
-        ZStack {
-            Color.appBackground.ignoresSafeArea()
+        ScrollView {
+            VStack(spacing: 32) {
+                CinematicHeroCarousel(
+                    movies: Movie.samples,
+                    onPlay: { _ in },
+                    onAddToList: { _ in },
+                    onTap: { _ in }
+                )
 
-            CinematicHero(
-                movie: .sample,
-                onPlay: {},
-                onAddToList: {},
-                onTap: {}
-            )
+                CompactHero(
+                    movie: .sample,
+                    onTap: {},
+                    onTrailerTap: {}
+                )
+                .padding(.horizontal)
+            }
         }
+        .background(Color.appBackground)
         .preferredColorScheme(.dark)
     }
 }

@@ -235,9 +235,9 @@ struct CustomTabBar: View {
     }
 }
 
-// MARK: - Floating Tab Bar (Legacy)
+// MARK: - Legacy Floating Tab Bar
 
-struct FloatingTabBar: View {
+struct LegacyFloatingTabBar: View {
 
     @Binding var selectedTab: MainTabView.Tab
 

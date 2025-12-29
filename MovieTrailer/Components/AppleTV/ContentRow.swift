@@ -2,8 +2,8 @@
 //  ContentRow.swift
 //  MovieTrailer
 //
-//  Created by Claude Code on 29/12/2025.
-//  Apple TV-style content rows
+//  Apple 2025 Premium Content Rows
+//  Apple TV-inspired horizontal scroll sections
 //
 
 import SwiftUI
@@ -14,123 +14,10 @@ import Kingfisher
 struct LargePosterRow: View {
 
     let title: String
-    let movies: [Movie]
-    let onMovieTap: (Movie) -> Void
-
-    private let cardWidth: CGFloat = 200
-    private let cardHeight: CGFloat = 300
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Section header
-            sectionHeader
-
-            // Horizontal scroll
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(movies) { movie in
-                        LargePosterCard(
-                            movie: movie,
-                            width: cardWidth,
-                            height: cardHeight,
-                            onTap: { onMovieTap(movie) }
-                        )
-                    }
-                }
-                .padding(.horizontal, 20)
-            }
-        }
-    }
-
-    private var sectionHeader: some View {
-        HStack {
-            Text(title)
-                .font(.title3.weight(.bold))
-                .foregroundColor(.textPrimary)
-
-            Image(systemName: "chevron.right")
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(.textTertiary)
-
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-    }
-}
-
-// MARK: - Large Poster Card
-
-struct LargePosterCard: View {
-
-    let movie: Movie
-    let width: CGFloat
-    let height: CGFloat
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: {
-            Haptics.shared.lightImpact()
-            onTap()
-        }) {
-            ZStack(alignment: .bottomLeading) {
-                // Poster image
-                posterImage
-
-                // Overlay gradient
-                LinearGradient.cardOverlay
-
-                // Info overlay
-                infoOverlay
-            }
-            .frame(width: width, height: height)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var posterImage: some View {
-        KFImage(movie.posterURL)
-            .placeholder {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.surfaceElevated)
-            }
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-            .frame(width: width, height: height)
-    }
-
-    private var infoOverlay: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Spacer()
-
-            Text(movie.title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(.textPrimary)
-                .lineLimit(2)
-
-            if let year = movie.releaseYear {
-                Text(year)
-                    .font(.caption)
-                    .foregroundColor(.textSecondary)
-            }
-        }
-        .padding(12)
-    }
-}
-
-// MARK: - Standard Content Row
-
-struct ContentRow: View {
-
-    let title: String
     let subtitle: String?
     let movies: [Movie]
     let onMovieTap: (Movie) -> Void
     let onSeeAll: (() -> Void)?
-
-    private let cardWidth: CGFloat = 140
-    private let cardHeight: CGFloat = 210
 
     init(
         title: String,
@@ -147,97 +34,188 @@ struct ContentRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             // Section header
-            sectionHeader
+            PremiumSectionHeader(
+                title: title,
+                subtitle: subtitle,
+                onSeeAll: onSeeAll
+            )
 
             // Horizontal scroll
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: Spacing.md) {
                     ForEach(movies) { movie in
-                        StandardMovieCard(
+                        LargePosterCard(
                             movie: movie,
-                            width: cardWidth,
-                            height: cardHeight,
                             onTap: { onMovieTap(movie) }
                         )
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Spacing.horizontal)
             }
         }
-    }
-
-    private var sectionHeader: some View {
-        Button(action: {
-            onSeeAll?()
-        }) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.title3.weight(.bold))
-                        .foregroundColor(.textPrimary)
-
-                    if let subtitle = subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundColor(.textTertiary)
-                    }
-                }
-
-                Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.textTertiary)
-
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-        }
-        .buttonStyle(.plain)
-        .disabled(onSeeAll == nil)
     }
 }
 
-// MARK: - Standard Movie Card
+// MARK: - Large Poster Card
 
-struct StandardMovieCard: View {
+struct LargePosterCard: View {
 
     let movie: Movie
-    let width: CGFloat
-    let height: CGFloat
     let onTap: () -> Void
+
+    @State private var isPressed = false
+
+    private let cardWidth: CGFloat = 200
+    private let cardHeight: CGFloat = 300
 
     var body: some View {
         Button(action: {
-            Haptics.shared.lightImpact()
+            Haptics.shared.cardTapped()
             onTap()
         }) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Poster
+            ZStack(alignment: .bottomLeading) {
+                // Poster image with shimmer placeholder
                 posterImage
 
-                // Title
-                Text(movie.title)
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(.textPrimary)
-                    .lineLimit(2)
-                    .frame(width: width, alignment: .leading)
+                // Gradient overlay
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        .clear,
+                        .black.opacity(0.5),
+                        .black.opacity(0.85)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                // Info overlay
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Spacer()
+
+                    // Progress bar (simulated watch progress)
+                    GeometryReader { geometry in
+                        Capsule()
+                            .fill(Color.accentPrimary)
+                            .frame(width: geometry.size.width * 0.6, height: 3)
+                    }
+                    .frame(height: 3)
+
+                    Text(movie.title)
+                        .font(.headline2)
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(2)
+
+                    HStack(spacing: Spacing.xs) {
+                        if let year = movie.releaseYear {
+                            Text(year)
+                                .font(.labelSmall)
+                                .foregroundColor(.textTertiary)
+                        }
+
+                        if movie.voteAverage > 0 {
+                            Text("•")
+                                .foregroundColor(.textTertiary)
+
+                            HStack(spacing: 2) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.ratingStar)
+                                Text(movie.formattedRating)
+                                    .font(.labelSmall)
+                                    .foregroundColor(.textSecondary)
+                            }
+                        }
+                    }
+                }
+                .padding(Spacing.md)
             }
+            .frame(width: cardWidth, height: cardHeight)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large, style: .continuous)
+                    .stroke(Color.glassBorder, lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 8)
+            .scaleEffect(isPressed ? 0.96 : 1.0)
+            .animation(AppTheme.Animation.quick, value: isPressed)
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
     }
 
     private var posterImage: some View {
         KFImage(movie.posterURL)
             .placeholder {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.surfaceElevated)
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.surfacePrimary, Color.surfaceSecondary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shimmer(isActive: true)
             }
             .resizable()
-            .aspectRatio(2/3, contentMode: .fill)
-            .frame(width: width, height: height)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+            .aspectRatio(contentMode: .fill)
+            .frame(width: cardWidth, height: cardHeight)
+    }
+}
+
+// MARK: - Standard Content Row
+
+struct ContentRow: View {
+
+    let title: String
+    let subtitle: String?
+    let movies: [Movie]
+    let onMovieTap: (Movie) -> Void
+    let onSeeAll: (() -> Void)?
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        movies: [Movie],
+        onMovieTap: @escaping (Movie) -> Void,
+        onSeeAll: (() -> Void)? = nil
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.movies = movies
+        self.onMovieTap = onMovieTap
+        self.onSeeAll = onSeeAll
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Section header
+            PremiumSectionHeader(
+                title: title,
+                subtitle: subtitle,
+                onSeeAll: onSeeAll
+            )
+
+            // Horizontal scroll
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.sm) {
+                    ForEach(movies) { movie in
+                        PremiumPosterCard(
+                            movie: movie,
+                            size: .medium,
+                            onTap: { onMovieTap(movie) }
+                        )
+                    }
+                }
+                .padding(.horizontal, Spacing.horizontal)
+            }
+        }
     }
 }
 
@@ -250,69 +228,542 @@ struct CompactMovieRow: View {
     let movies: [Movie]
     let onMovieTap: (Movie) -> Void
 
-    private let cardSize: CGFloat = 100
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Section header
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.body.weight(.semibold))
-                    .foregroundColor(.accentPrimary)
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Section header with icon
+            HStack(spacing: Spacing.sm) {
+                // Icon with gradient background
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.accentPrimary.opacity(0.3), .accentSecondary.opacity(0.3)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 28, height: 28)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.accentPrimary)
+                }
 
                 Text(title)
-                    .font(.headline.weight(.bold))
+                    .font(.headline2)
                     .foregroundColor(.textPrimary)
 
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.textTertiary)
 
                 Spacer()
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.horizontal)
 
             // Horizontal scroll
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: Spacing.sm) {
                     ForEach(movies) { movie in
-                        CompactMovieCard(
+                        PremiumPosterCard(
                             movie: movie,
-                            size: cardSize,
+                            size: .small,
                             onTap: { onMovieTap(movie) }
                         )
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Spacing.horizontal)
             }
         }
     }
 }
 
-// MARK: - Compact Movie Card
+// MARK: - Featured Row (Larger cards with more info)
 
-struct CompactMovieCard: View {
+struct FeaturedRow: View {
+
+    let title: String
+    let subtitle: String?
+    let movies: [Movie]
+    let onMovieTap: (Movie) -> Void
+    let onTrailerTap: ((Movie) -> Void)?
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        movies: [Movie],
+        onMovieTap: @escaping (Movie) -> Void,
+        onTrailerTap: ((Movie) -> Void)? = nil
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.movies = movies
+        self.onMovieTap = onMovieTap
+        self.onTrailerTap = onTrailerTap
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Section header
+            PremiumSectionHeader(
+                title: title,
+                subtitle: subtitle,
+                onSeeAll: nil
+            )
+
+            // Horizontal scroll
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.md) {
+                    ForEach(movies) { movie in
+                        FeaturedMovieCard(
+                            movie: movie,
+                            onTap: { onMovieTap(movie) },
+                            onTrailerTap: onTrailerTap.map { callback in { callback(movie) } }
+                        )
+                    }
+                }
+                .padding(.horizontal, Spacing.horizontal)
+            }
+        }
+    }
+}
+
+// MARK: - Featured Movie Card
+
+struct FeaturedMovieCard: View {
 
     let movie: Movie
-    let size: CGFloat
     let onTap: () -> Void
+    let onTrailerTap: (() -> Void)?
+
+    @State private var isPressed = false
+
+    private let cardWidth: CGFloat = 300
+    private let cardHeight: CGFloat = 180
 
     var body: some View {
         Button(action: {
-            Haptics.shared.lightImpact()
+            Haptics.shared.cardTapped()
             onTap()
         }) {
-            KFImage(movie.posterURL)
-                .placeholder {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.surfaceElevated)
+            ZStack(alignment: .bottomLeading) {
+                // Backdrop image
+                KFImage(movie.backdropURL ?? movie.posterURL)
+                    .placeholder {
+                        Rectangle()
+                            .fill(Color.surfaceSecondary)
+                            .shimmer(isActive: true)
+                    }
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: cardWidth, height: cardHeight)
+
+                // Gradient overlay
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        .black.opacity(0.3),
+                        .black.opacity(0.8)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                // Content
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text(movie.title)
+                            .font(.headline2)
+                            .foregroundColor(.textPrimary)
+                            .lineLimit(2)
+
+                        HStack(spacing: Spacing.sm) {
+                            // Rating
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.ratingStar)
+                                Text(movie.formattedRating)
+                                    .font(.labelMedium)
+                                    .foregroundColor(.textPrimary)
+                            }
+
+                            if let year = movie.releaseYear {
+                                Text("•")
+                                    .foregroundColor(.textTertiary)
+                                Text(year)
+                                    .font(.labelMedium)
+                                    .foregroundColor(.textSecondary)
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    // Play trailer button
+                    if onTrailerTap != nil {
+                        Button {
+                            Haptics.shared.buttonTapped()
+                            onTrailerTap?()
+                        } label: {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.textPrimary)
+                                .frame(width: 40, height: 40)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(ScaleButtonStyle())
+                    }
                 }
-                .resizable()
-                .aspectRatio(2/3, contentMode: .fill)
-                .frame(width: size, height: size * 1.5)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(Spacing.md)
+            }
+            .frame(width: cardWidth, height: cardHeight)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large, style: .continuous)
+                    .stroke(Color.glassBorder, lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 6)
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(AppTheme.Animation.quick, value: isPressed)
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+// MARK: - Streaming Row
+
+struct StreamingRow: View {
+
+    let service: StreamingService
+    let movies: [Movie]
+    let onMovieTap: (Movie) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Header with streaming service branding
+            HStack(spacing: Spacing.sm) {
+                // Service badge
+                Text(service.displayName)
+                    .font(.headline2)
+                    .foregroundColor(.textPrimary)
+
+                // Service indicator pill
+                Text("Now Streaming")
+                    .font(.pillSmall)
+                    .foregroundColor(service.color)
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.vertical, Spacing.xxs)
+                    .background(service.color.opacity(0.15))
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(.horizontal, Spacing.horizontal)
+
+            // Movies
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.sm) {
+                    ForEach(movies) { movie in
+                        StreamingPosterCard(
+                            movie: movie,
+                            service: service,
+                            onTap: { onMovieTap(movie) }
+                        )
+                    }
+                }
+                .padding(.horizontal, Spacing.horizontal)
+            }
+        }
+    }
+}
+
+// MARK: - Streaming Poster Card
+
+struct StreamingPosterCard: View {
+
+    let movie: Movie
+    let service: StreamingService
+    let onTap: () -> Void
+
+    @State private var isPressed = false
+
+    private let cardWidth: CGFloat = 130
+    private let cardHeight: CGFloat = 195
+
+    var body: some View {
+        Button(action: {
+            Haptics.shared.cardTapped()
+            onTap()
+        }) {
+            ZStack(alignment: .topLeading) {
+                // Poster
+                KFImage(movie.posterURL)
+                    .placeholder {
+                        Rectangle()
+                            .fill(Color.surfaceSecondary)
+                            .shimmer(isActive: true)
+                    }
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: cardWidth, height: cardHeight)
+
+                // Service badge
+                Text(service.shortName)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(service.color)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .padding(Spacing.xs)
+            }
+            .frame(width: cardWidth, height: cardHeight)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium, style: .continuous)
+                    .stroke(service.color.opacity(0.3), lineWidth: 1)
+            )
+            .shadow(color: service.color.opacity(0.3), radius: 8, x: 0, y: 4)
+            .scaleEffect(isPressed ? 0.96 : 1.0)
+            .animation(AppTheme.Animation.quick, value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+// MARK: - Premium Section Header
+
+struct PremiumSectionHeader: View {
+
+    let title: String
+    let subtitle: String?
+    let onSeeAll: (() -> Void)?
+
+    var body: some View {
+        Button(action: {
+            onSeeAll?()
+        }) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline1)
+                        .foregroundColor(.textPrimary)
+
+                    if let subtitle = subtitle {
+                        Text(subtitle)
+                            .font(.labelMedium)
+                            .foregroundColor(.textTertiary)
+                    }
+                }
+
+                if onSeeAll != nil {
+                    Spacer()
+
+                    HStack(spacing: 4) {
+                        Text("See All")
+                            .font(.labelMedium)
+                            .foregroundColor(.accentPrimary)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.accentPrimary)
+                    }
+                } else {
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, Spacing.horizontal)
+        }
+        .buttonStyle(.plain)
+        .disabled(onSeeAll == nil)
+    }
+}
+
+// MARK: - Premium Poster Card
+
+struct PremiumPosterCard: View {
+
+    enum CardSize {
+        case small   // 100 x 150
+        case medium  // 130 x 195
+        case large   // 160 x 240
+
+        var width: CGFloat {
+            switch self {
+            case .small: return 100
+            case .medium: return 130
+            case .large: return 160
+            }
+        }
+
+        var height: CGFloat {
+            width * 1.5
+        }
+
+        var cornerRadius: CGFloat {
+            switch self {
+            case .small: return 8
+            case .medium: return 10
+            case .large: return 12
+            }
+        }
+
+        var titleFont: Font {
+            switch self {
+            case .small: return .caption2.weight(.medium)
+            case .medium: return .caption.weight(.medium)
+            case .large: return .subheadline.weight(.medium)
+            }
+        }
+    }
+
+    let movie: Movie
+    let size: CardSize
+    let showTitle: Bool
+    let onTap: () -> Void
+
+    @State private var isPressed = false
+
+    init(
+        movie: Movie,
+        size: CardSize = .medium,
+        showTitle: Bool = true,
+        onTap: @escaping () -> Void
+    ) {
+        self.movie = movie
+        self.size = size
+        self.showTitle = showTitle
+        self.onTap = onTap
+    }
+
+    var body: some View {
+        Button(action: {
+            Haptics.shared.cardTapped()
+            onTap()
+        }) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                // Poster
+                ZStack(alignment: .topTrailing) {
+                    KFImage(movie.posterURL)
+                        .placeholder {
+                            Rectangle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.surfacePrimary, Color.surfaceSecondary],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shimmer(isActive: true)
+                        }
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: size.width, height: size.height)
+
+                    // Rating badge for large size
+                    if size == .large && movie.voteAverage > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.ratingStar)
+                            Text(movie.formattedRating)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .padding(6)
+                    }
+                }
+                .frame(width: size.width, height: size.height)
+                .clipShape(RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
+                        .stroke(Color.glassBorder, lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 4)
+
+                // Title
+                if showTitle {
+                    Text(movie.title)
+                        .font(size.titleFont)
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(2)
+                        .frame(width: size.width, alignment: .leading)
+                }
+            }
+            .scaleEffect(isPressed ? 0.96 : 1.0)
+            .animation(AppTheme.Animation.quick, value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+// MARK: - Shimmer Effect
+
+extension View {
+    func shimmer(isActive: Bool) -> some View {
+        modifier(ShimmerModifier(isActive: isActive))
+    }
+}
+
+struct ShimmerModifier: ViewModifier {
+    let isActive: Bool
+    @State private var phase: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        if isActive {
+            content
+                .overlay(
+                    GeometryReader { geometry in
+                        LinearGradient(
+                            colors: [
+                                .clear,
+                                .white.opacity(0.1),
+                                .clear
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: geometry.size.width * 2)
+                        .offset(x: -geometry.size.width + phase * geometry.size.width * 3)
+                    }
+                    .clipped()
+                )
+                .onAppear {
+                    withAnimation(
+                        Animation.linear(duration: 1.5)
+                            .repeatForever(autoreverses: false)
+                    ) {
+                        phase = 1
+                    }
+                }
+        } else {
+            content
+        }
     }
 }
 
@@ -325,20 +776,28 @@ struct ContentRow_Previews: PreviewProvider {
             VStack(spacing: 32) {
                 LargePosterRow(
                     title: "Continue Watching",
+                    subtitle: "Pick up where you left off",
                     movies: Movie.samples,
                     onMovieTap: { _ in }
                 )
 
                 ContentRow(
-                    title: "New Releases",
-                    subtitle: "Movies added this week",
+                    title: "Trending Now",
+                    subtitle: "What everyone's watching",
                     movies: Movie.samples,
                     onMovieTap: { _ in }
                 )
 
+                FeaturedRow(
+                    title: "Featured",
+                    movies: Movie.samples,
+                    onMovieTap: { _ in },
+                    onTrailerTap: { _ in }
+                )
+
                 CompactMovieRow(
-                    title: "Trending",
-                    icon: "flame.fill",
+                    title: "Action Movies",
+                    icon: "bolt.fill",
                     movies: Movie.samples,
                     onMovieTap: { _ in }
                 )

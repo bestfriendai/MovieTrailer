@@ -27,6 +27,8 @@ enum StreamingService: String, CaseIterable, Identifiable, Codable {
 
     var id: String { rawValue }
 
+    var displayName: String { rawValue }
+
     var providerId: Int {
         switch self {
         case .netflix: return 8
