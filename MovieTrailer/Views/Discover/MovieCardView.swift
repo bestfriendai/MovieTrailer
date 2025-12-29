@@ -72,6 +72,7 @@ struct MovieCardView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
                         .lineLimit(2)
+                        .truncationMode(.tail)
 
                     HStack(spacing: 4) {
                         Image(systemName: "star.fill")

@@ -8,6 +8,36 @@
 
 import SwiftUI
 
+// MARK: - Quick Filter Type
+
+enum QuickFilter: String, CaseIterable {
+    case none = "None"
+    case tonight = "Tonight"
+    case dateNight = "Date Night"
+    case family = "Family"
+    case newReleases = "New"
+
+    var icon: String {
+        switch self {
+        case .none: return "xmark"
+        case .tonight: return "moon.stars.fill"
+        case .dateNight: return "heart.fill"
+        case .family: return "figure.2.and.child.holdinghands"
+        case .newReleases: return "star.fill"
+        }
+    }
+
+    var genreIds: [Int] {
+        switch self {
+        case .none: return []
+        case .tonight: return [28, 53, 27, 878] // Action, Thriller, Horror, Sci-Fi
+        case .dateNight: return [10749, 35, 18] // Romance, Comedy, Drama
+        case .family: return [10751, 16, 12, 14] // Family, Animation, Adventure, Fantasy
+        case .newReleases: return [] // Uses release date filter instead
+        }
+    }
+}
+
 struct HomeView: View {
 
     // MARK: - Properties
@@ -18,6 +48,8 @@ struct HomeView: View {
 
     let onMovieTap: (Movie) -> Void
     let onPlayTrailer: (Movie) -> Void
+
+    private let years = ["2025", "2024", "2023", "2022", "2021"]
 
     // MARK: - Initialization
 
@@ -41,9 +73,9 @@ struct HomeView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: Spacing.xxl) {
                     // Cinematic Hero Carousel
-                    if !viewModel.featuredMovies.isEmpty {
+                    if !viewModel.filteredFeaturedMovies.isEmpty {
                         CinematicHeroCarousel(
-                            movies: viewModel.featuredMovies,
+                            movies: viewModel.filteredFeaturedMovies,
                             onPlay: onPlayTrailer,
                             onAddToList: { movie in
                                 viewModel.toggleWatchlist(for: movie)
@@ -58,8 +90,35 @@ struct HomeView: View {
                     // Quick filter pills
                     quickFilterSection
 
+                    // Offline banner (if using cached data)
+                    if viewModel.isUsingCachedData {
+                        OfflineBanner {
+                            Task { await viewModel.loadContent() }
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+
+                    // Error banner (if any)
+                    if viewModel.showErrorBanner, let message = viewModel.errorMessage, !viewModel.isUsingCachedData {
+                        ErrorBanner(
+                            message: message,
+                            onRetry: {
+                                Task { await viewModel.loadContent() }
+                            },
+                            onDismiss: {
+                                viewModel.dismissError()
+                            }
+                        )
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+
+                    // Active filter indicator
+                    if viewModel.hasActiveFilters {
+                        activeFilterBanner
+                    }
+
                     // Continue Watching (if any in watchlist)
-                    if !viewModel.watchlistMovies.isEmpty {
+                    if !viewModel.watchlistMovies.isEmpty && !viewModel.hasActiveFilters {
                         LargePosterRow(
                             title: "Continue Watching",
                             subtitle: "Pick up where you left off",
@@ -69,52 +128,54 @@ struct HomeView: View {
                     }
 
                     // Top 10 Movies
-                    if !viewModel.topRatedMovies.isEmpty {
+                    if !viewModel.filteredTopRatedMovies.isEmpty {
                         Top10Row(
-                            title: "Top 10 Movies Today",
-                            movies: viewModel.topRatedMovies,
+                            title: viewModel.hasActiveFilters ? "Top Matches" : "Top 10 Movies Today",
+                            movies: Array(viewModel.filteredTopRatedMovies.prefix(10)),
                             onMovieTap: onMovieTap
                         )
                     }
 
                     // Trending Now with Featured Cards
-                    if !viewModel.trendingMovies.isEmpty {
+                    if !viewModel.filteredTrendingMovies.isEmpty {
                         FeaturedRow(
-                            title: "Trending Now",
-                            subtitle: "What everyone's watching",
-                            movies: Array(viewModel.trendingMovies.prefix(10)),
+                            title: viewModel.hasActiveFilters ? "Trending Matches" : "Trending Now",
+                            subtitle: viewModel.hasActiveFilters ? "Based on your filters" : "What everyone's watching",
+                            movies: Array(viewModel.filteredTrendingMovies.prefix(10)),
                             onMovieTap: onMovieTap,
                             onTrailerTap: onPlayTrailer
                         )
                     }
 
                     // In Theaters Now
-                    if !viewModel.nowPlayingMovies.isEmpty {
+                    if !viewModel.filteredNowPlayingMovies.isEmpty && !viewModel.hasActiveFilters {
                         theaterSection
                     }
 
                     // Popular Movies
-                    if !viewModel.popularMovies.isEmpty {
+                    if !viewModel.filteredPopularMovies.isEmpty {
                         ContentRow(
-                            title: "Popular Movies",
-                            subtitle: "Fan favorites",
-                            movies: viewModel.popularMovies,
+                            title: viewModel.hasActiveFilters ? "Popular Matches" : "Popular Movies",
+                            subtitle: viewModel.hasActiveFilters ? "Matching your preferences" : "Fan favorites",
+                            movies: viewModel.filteredPopularMovies,
                             onMovieTap: onMovieTap
                         )
                     }
 
                     // New Releases
-                    if !viewModel.newReleases.isEmpty {
+                    if !viewModel.filteredNewReleases.isEmpty && !viewModel.hasActiveFilters {
                         ContentRow(
                             title: "New Releases",
                             subtitle: "Fresh arrivals",
-                            movies: viewModel.newReleases,
+                            movies: viewModel.filteredNewReleases,
                             onMovieTap: onMovieTap
                         )
                     }
 
-                    // Genre Sections
-                    genreSections
+                    // Genre Sections (hide when filtering)
+                    if !viewModel.hasActiveFilters {
+                        genreSections
+                    }
 
                     // Bottom padding for tab bar
                     Spacer()
@@ -135,8 +196,9 @@ struct HomeView: View {
                 loadingOverlay
             }
         }
-        // Filter sheet placeholder - to be implemented
-        // .sheet(isPresented: $showingFilters) { }
+        .sheet(isPresented: $showingFilters) {
+            filterSheet
+        }
     }
 
     // MARK: - Quick Filter Section
@@ -154,6 +216,11 @@ struct HomeView: View {
                             .font(.system(size: 14, weight: .medium))
                         Text("Filters")
                             .font(.labelMedium)
+                        if viewModel.selectedGenre != nil || viewModel.selectedYear != nil || viewModel.minRating > 0 {
+                            Circle()
+                                .fill(Color.cyan)
+                                .frame(width: 6, height: 6)
+                        }
                     }
                     .foregroundColor(.textPrimary)
                     .padding(.horizontal, Spacing.md)
@@ -168,13 +235,204 @@ struct HomeView: View {
                 .buttonStyle(ScaleButtonStyle())
 
                 // Quick filter presets
-                QuickFilterPill(title: "Tonight", icon: "moon.stars.fill", isSelected: false) {}
-                QuickFilterPill(title: "Date Night", icon: "heart.fill", isSelected: false) {}
-                QuickFilterPill(title: "Family", icon: "figure.2.and.child.holdinghands", isSelected: false) {}
-                QuickFilterPill(title: "New", icon: "star.fill", isSelected: false) {}
+                QuickFilterPill(
+                    title: "Tonight",
+                    icon: "moon.stars.fill",
+                    isSelected: viewModel.selectedQuickFilter == .tonight
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.setQuickFilter(.tonight)
+                    }
+                }
+
+                QuickFilterPill(
+                    title: "Date Night",
+                    icon: "heart.fill",
+                    isSelected: viewModel.selectedQuickFilter == .dateNight
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.setQuickFilter(.dateNight)
+                    }
+                }
+
+                QuickFilterPill(
+                    title: "Family",
+                    icon: "figure.2.and.child.holdinghands",
+                    isSelected: viewModel.selectedQuickFilter == .family
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.setQuickFilter(.family)
+                    }
+                }
+
+                QuickFilterPill(
+                    title: "New",
+                    icon: "star.fill",
+                    isSelected: viewModel.selectedQuickFilter == .newReleases
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.setQuickFilter(.newReleases)
+                    }
+                }
+
+                // Clear all button (when filters active)
+                if viewModel.hasActiveFilters {
+                    Button {
+                        Haptics.shared.lightImpact()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.clearAllFilters()
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                            Text("Clear")
+                                .font(.labelMedium)
+                        }
+                        .foregroundColor(.red)
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                    }
+                }
             }
             .padding(.horizontal, Spacing.horizontal)
         }
+    }
+
+    // MARK: - Active Filter Banner
+
+    private var activeFilterBanner: some View {
+        HStack(spacing: Spacing.sm) {
+            Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                .foregroundColor(.cyan)
+
+            Text(viewModel.activeFilterDescription)
+                .font(.subheadline)
+                .foregroundColor(.white)
+
+            Spacer()
+
+            Text("\(viewModel.totalFilteredCount) movies")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.6))
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
+        .background(Color.cyan.opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, Spacing.horizontal)
+    }
+
+    // MARK: - Filter Sheet
+
+    private var filterSheet: some View {
+        NavigationStack {
+            List {
+                // Genre Section
+                Section("Genre") {
+                    ForEach(Genre.all.prefix(12)) { genre in
+                        Button {
+                            Haptics.shared.selectionChanged()
+                            if viewModel.selectedGenre?.id == genre.id {
+                                viewModel.selectedGenre = nil
+                            } else {
+                                viewModel.selectedGenre = genre
+                            }
+                        } label: {
+                            HStack {
+                                Text(genre.name)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                if viewModel.selectedGenre?.id == genre.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.cyan)
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Year Section
+                Section("Release Year") {
+                    ForEach(years, id: \.self) { year in
+                        Button {
+                            Haptics.shared.selectionChanged()
+                            if viewModel.selectedYear == year {
+                                viewModel.selectedYear = nil
+                            } else {
+                                viewModel.selectedYear = year
+                            }
+                        } label: {
+                            HStack {
+                                Text(year)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                if viewModel.selectedYear == year {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.cyan)
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Rating Section
+                Section("Minimum Rating") {
+                    ForEach([0.0, 5.0, 6.0, 7.0, 8.0], id: \.self) { rating in
+                        Button {
+                            Haptics.shared.selectionChanged()
+                            viewModel.minRating = rating
+                        } label: {
+                            HStack {
+                                if rating == 0 {
+                                    Text("Any Rating")
+                                        .foregroundColor(.white)
+                                } else {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "star.fill")
+                                            .foregroundColor(.yellow)
+                                            .font(.system(size: 14))
+                                        Text("\(Int(rating))+ Stars")
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                                Spacer()
+                                if viewModel.minRating == rating {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.cyan)
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Clear All Section
+                Section {
+                    Button("Clear All Filters") {
+                        Haptics.shared.lightImpact()
+                        viewModel.clearAllFilters()
+                    }
+                    .foregroundColor(.red)
+                }
+            }
+            .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        showingFilters = false
+                    }
+                    .fontWeight(.semibold)
+                    .foregroundColor(.cyan)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .preferredColorScheme(.dark)
     }
 
     // MARK: - Theater Section
@@ -336,6 +594,36 @@ struct HomeView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Offline Banner
+
+struct OfflineBanner: View {
+    let onRetry: () -> Void
+
+    var body: some View {
+        HStack(spacing: Spacing.sm) {
+            Image(systemName: "wifi.slash")
+                .foregroundColor(.orange)
+
+            Text("You're offline. Showing cached content.")
+                .font(.subheadline)
+                .foregroundColor(.white)
+
+            Spacer()
+
+            Button("Retry") {
+                onRetry()
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundColor(.cyan)
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
+        .background(Color.orange.opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, Spacing.horizontal)
     }
 }
 
@@ -536,6 +824,25 @@ struct TheaterMovieCard: View {
 
 import Kingfisher
 
+// MARK: - View State
+
+enum ViewState: Equatable {
+    case idle
+    case loading
+    case success
+    case error(String)
+
+    var isLoading: Bool {
+        if case .loading = self { return true }
+        return false
+    }
+
+    var errorMessage: String? {
+        if case .error(let message) = self { return message }
+        return nil
+    }
+}
+
 // MARK: - Home View Model
 
 @MainActor
@@ -558,43 +865,199 @@ final class HomeViewModel: ObservableObject {
     @Published var horrorMovies: [Movie] = []
     @Published var sciFiMovies: [Movie] = []
 
-    @Published var isLoading = false
-    @Published var error: NetworkError?
+    // View state for proper error handling
+    @Published var viewState: ViewState = .idle
+    @Published var showErrorBanner = false
+    @Published var errorMessage: String?
+
+    // Filtering state (moved from View)
+    @Published var selectedQuickFilter: QuickFilter = .none
+    @Published var selectedGenre: Genre?
+    @Published var selectedYear: String?
+    @Published var minRating: Double = 0
+
+    // Legacy compatibility
+    var isLoading: Bool { viewState.isLoading }
+    var error: NetworkError? {
+        if case .error = viewState { return .unknown }
+        return nil
+    }
 
     // MARK: - Dependencies
 
     private let tmdbService: TMDBService
     private let watchlistManager: WatchlistManager
+    private let imagePrefetcher = ImagePrefetcher()
+    private let offlineCache: OfflineMovieCache
+    private let networkMonitor: NetworkMonitor
+
+    // Offline state
+    @Published var isOffline = false
+    @Published var isUsingCachedData = false
+
+    // MARK: - Computed Properties - Filtering
+
+    var hasActiveFilters: Bool {
+        selectedQuickFilter != .none || selectedGenre != nil || selectedYear != nil || minRating > 0
+    }
+
+    var filteredFeaturedMovies: [Movie] {
+        let filtered = filterMovies(featuredMovies)
+        return filtered.isEmpty && hasActiveFilters ? filterMovies(trendingMovies).prefix(5).map { $0 } : filtered
+    }
+
+    var filteredTopRatedMovies: [Movie] {
+        filterMovies(topRatedMovies)
+    }
+
+    var filteredTrendingMovies: [Movie] {
+        filterMovies(trendingMovies)
+    }
+
+    var filteredNowPlayingMovies: [Movie] {
+        filterMovies(nowPlayingMovies)
+    }
+
+    var filteredPopularMovies: [Movie] {
+        filterMovies(popularMovies)
+    }
+
+    var filteredNewReleases: [Movie] {
+        filterMovies(newReleases)
+    }
+
+    var activeFilterDescription: String {
+        var parts: [String] = []
+        if selectedQuickFilter != .none { parts.append(selectedQuickFilter.rawValue) }
+        if let genre = selectedGenre { parts.append(genre.name) }
+        if let year = selectedYear { parts.append(year) }
+        if minRating > 0 { parts.append("★\(Int(minRating))+") }
+        return parts.isEmpty ? "Filtered" : parts.joined(separator: " • ")
+    }
+
+    var totalFilteredCount: Int {
+        filteredTrendingMovies.count + filteredPopularMovies.count
+    }
 
     // MARK: - Initialization
 
-    init(tmdbService: TMDBService, watchlistManager: WatchlistManager) {
+    init(
+        tmdbService: TMDBService,
+        watchlistManager: WatchlistManager,
+        offlineCache: OfflineMovieCache = .shared,
+        networkMonitor: NetworkMonitor = .shared
+    ) {
         self.tmdbService = tmdbService
         self.watchlistManager = watchlistManager
+        self.offlineCache = offlineCache
+        self.networkMonitor = networkMonitor
+
+        // Observe network status
+        observeNetworkStatus()
+    }
+
+    private func observeNetworkStatus() {
+        // Check initial state
+        isOffline = !networkMonitor.isConnected
     }
 
     // MARK: - Public Methods
 
     func loadContent() async {
-        guard !isLoading else { return }
-        isLoading = true
-        error = nil
+        guard viewState != .loading else { return }
+        viewState = .loading
+        showErrorBanner = false
+        isUsingCachedData = false
+
+        // Check network status
+        isOffline = !networkMonitor.isConnected
 
         // Load watchlist
         loadWatchlist()
 
+        var hasError = false
+        var errorMessages: [String] = []
+
         // Load all content in parallel
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.loadTrending() }
-            group.addTask { await self.loadPopular() }
-            group.addTask { await self.loadTopRated() }
-            group.addTask { await self.loadNowPlaying() }
+        await withTaskGroup(of: (String, Error?).self) { group in
+            group.addTask { ("trending", await self.loadTrendingWithError()) }
+            group.addTask { ("popular", await self.loadPopularWithError()) }
+            group.addTask { ("topRated", await self.loadTopRatedWithError()) }
+            group.addTask { ("nowPlaying", await self.loadNowPlayingWithError()) }
+
+            for await (source, error) in group {
+                if let error = error {
+                    hasError = true
+                    errorMessages.append("\(source): \(error.localizedDescription)")
+                }
+            }
+        }
+
+        // If all failed, try loading from cache
+        if hasError && trendingMovies.isEmpty && popularMovies.isEmpty {
+            await loadFromCacheIfAvailable()
+        }
+
+        // Cache successful results for offline use
+        if !trendingMovies.isEmpty {
+            await offlineCache.cacheMovies(trendingMovies, category: .trending)
+        }
+        if !popularMovies.isEmpty {
+            await offlineCache.cacheMovies(popularMovies, category: .popular)
+        }
+        if !topRatedMovies.isEmpty {
+            await offlineCache.cacheMovies(topRatedMovies, category: .topRated)
+        }
+        if !nowPlayingMovies.isEmpty {
+            await offlineCache.cacheMovies(nowPlayingMovies, category: .nowPlaying)
         }
 
         // Filter by genres
         filterByGenres()
 
-        isLoading = false
+        // Prefetch images for featured movies
+        prefetchImages()
+
+        // Update state
+        if hasError && trendingMovies.isEmpty && popularMovies.isEmpty {
+            viewState = .error("Failed to load movies. Check your connection.")
+            showErrorBanner = true
+            errorMessage = "Network error. Tap to retry."
+        } else if hasError {
+            // Partial success - show banner but still display content
+            viewState = .success
+            showErrorBanner = true
+            errorMessage = isUsingCachedData ? "Showing cached content" : "Some content failed to load"
+        } else {
+            viewState = .success
+        }
+    }
+
+    /// Load content from offline cache
+    private func loadFromCacheIfAvailable() async {
+        let cachedTrending = await offlineCache.getMovies(for: .trending)
+        let cachedPopular = await offlineCache.getMovies(for: .popular)
+        let cachedTopRated = await offlineCache.getMovies(for: .topRated)
+        let cachedNowPlaying = await offlineCache.getMovies(for: .nowPlaying)
+
+        if !cachedTrending.isEmpty {
+            trendingMovies = cachedTrending
+            featuredMovies = Array(cachedTrending.prefix(5))
+            isUsingCachedData = true
+        }
+        if !cachedPopular.isEmpty {
+            popularMovies = cachedPopular
+            isUsingCachedData = true
+        }
+        if !cachedTopRated.isEmpty {
+            topRatedMovies = cachedTopRated
+            isUsingCachedData = true
+        }
+        if !cachedNowPlaying.isEmpty {
+            nowPlayingMovies = cachedNowPlaying
+            newReleases = cachedNowPlaying
+            isUsingCachedData = true
+        }
     }
 
     func refresh() async {
@@ -611,71 +1074,170 @@ final class HomeViewModel: ObservableObject {
         watchlistManager.contains(movie)
     }
 
+    func dismissError() {
+        showErrorBanner = false
+        errorMessage = nil
+    }
+
+    func clearAllFilters() {
+        selectedQuickFilter = .none
+        selectedGenre = nil
+        selectedYear = nil
+        minRating = 0
+    }
+
+    func setQuickFilter(_ filter: QuickFilter) {
+        if selectedQuickFilter == filter {
+            selectedQuickFilter = .none
+        } else {
+            selectedQuickFilter = filter
+        }
+    }
+
+    // MARK: - Filtering Logic (moved from View)
+
+    func filterMovies(_ movies: [Movie]) -> [Movie] {
+        var filtered = movies
+
+        // Apply quick filter
+        if selectedQuickFilter != .none {
+            if selectedQuickFilter == .newReleases {
+                filtered = filtered.filter { movie in
+                    guard let dateString = movie.releaseDate else { return false }
+                    return dateString >= "2024-09"
+                }
+            } else {
+                let genreIds = selectedQuickFilter.genreIds
+                filtered = filtered.filter { movie in
+                    movie.genreIds.contains { genreIds.contains($0) }
+                }
+            }
+        }
+
+        // Apply genre filter
+        if let genre = selectedGenre {
+            filtered = filtered.filter { $0.genreIds.contains(genre.id) }
+        }
+
+        // Apply year filter
+        if let year = selectedYear {
+            filtered = filtered.filter { $0.releaseDate?.hasPrefix(year) == true }
+        }
+
+        // Apply rating filter
+        if minRating > 0 {
+            filtered = filtered.filter { $0.voteAverage >= minRating }
+        }
+
+        return filtered
+    }
+
     // MARK: - Private Methods
 
     private func loadWatchlist() {
         watchlistMovies = watchlistManager.items.prefix(10).map { $0.toMovie() }
     }
 
-    private func loadTrending() async {
+    private func loadTrendingWithError() async -> Error? {
         do {
             let response = try await tmdbService.fetchTrending(page: 1)
             trendingMovies = response.results
-            // Use trending for featured
             featuredMovies = Array(response.results.prefix(5))
+            return nil
         } catch {
-            // Silent fail
+            return error
         }
     }
 
-    private func loadPopular() async {
+    private func loadPopularWithError() async -> Error? {
         do {
-            let response = try await tmdbService.fetchPopular(page: 1)
+            let response = try await tmdbService.fetchRecentMovies(page: 1)
             popularMovies = response.results
-            // Recent releases
-            newReleases = response.results.filter { movie in
-                guard let date = movie.releaseDate else { return false }
-                let year = String(date.prefix(4))
-                return year == "2024" || year == "2025"
+            return nil
+        } catch {
+            do {
+                let response = try await tmdbService.fetchPopular(page: 1)
+                popularMovies = response.results
+                return nil
+            } catch {
+                return error
             }
-        } catch {
-            // Silent fail
         }
     }
 
-    private func loadTopRated() async {
+    private func loadTopRatedWithError() async -> Error? {
         do {
-            let response = try await tmdbService.fetchTopRated(page: 1)
-            topRatedMovies = response.results
+            let response = try await tmdbService.fetchNowPlaying(page: 1)
+            topRatedMovies = Array(response.results.sorted { $0.popularity > $1.popularity }.prefix(10))
+            return nil
         } catch {
-            // Silent fail
+            do {
+                let response = try await tmdbService.fetchTrending(page: 1)
+                topRatedMovies = Array(response.results.prefix(10))
+                return nil
+            } catch {
+                return error
+            }
         }
     }
 
-    private func loadNowPlaying() async {
-        // Use popular movies for now playing section as a fallback
-        // since fetchNowPlaying may not be available
-        nowPlayingMovies = popularMovies
+    private func loadNowPlayingWithError() async -> Error? {
+        do {
+            let response = try await tmdbService.fetchNowPlaying(page: 1)
+            nowPlayingMovies = response.results
+            newReleases = response.results
+            return nil
+        } catch {
+            return error
+        }
     }
 
     private func filterByGenres() {
-        let allMovies = trendingMovies + popularMovies + topRatedMovies
-        let uniqueMovies = Array(Set(allMovies))
+        let allMovies = trendingMovies + nowPlayingMovies + popularMovies
 
-        // Action (28)
+        let recentMovies = allMovies.filter { movie in
+            guard let dateString = movie.releaseDate, dateString.count >= 4 else { return true }
+            let year = String(dateString.prefix(4))
+            return (Int(year) ?? 0) >= 2023
+        }
+
+        let uniqueMovies = Array(Set(recentMovies))
+
         actionMovies = uniqueMovies.filter { $0.genreIds.contains(28) }
-
-        // Comedy (35)
         comedyMovies = uniqueMovies.filter { $0.genreIds.contains(35) }
-
-        // Drama (18)
         dramaMovies = uniqueMovies.filter { $0.genreIds.contains(18) }
-
-        // Horror (27) + Thriller (53)
         horrorMovies = uniqueMovies.filter { $0.genreIds.contains(27) || $0.genreIds.contains(53) }
-
-        // Sci-Fi (878) + Fantasy (14)
         sciFiMovies = uniqueMovies.filter { $0.genreIds.contains(878) || $0.genreIds.contains(14) }
+    }
+
+    // MARK: - Image Prefetching
+
+    private func prefetchImages() {
+        // Prefetch featured movie images
+        let urls = featuredMovies.compactMap { $0.backdropURL ?? $0.posterURL }
+        imagePrefetcher.prefetch(urls: urls)
+
+        // Prefetch next carousel images
+        let nextUrls = trendingMovies.prefix(10).compactMap { $0.posterURL }
+        imagePrefetcher.prefetch(urls: nextUrls)
+    }
+}
+
+// MARK: - Image Prefetcher
+
+final class ImagePrefetcher {
+    private var currentPrefetcher: Kingfisher.ImagePrefetcher?
+
+    func prefetch(urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        currentPrefetcher?.stop()
+        currentPrefetcher = Kingfisher.ImagePrefetcher(urls: urls)
+        currentPrefetcher?.start()
+    }
+
+    func stop() {
+        currentPrefetcher?.stop()
+        currentPrefetcher = nil
     }
 }
 

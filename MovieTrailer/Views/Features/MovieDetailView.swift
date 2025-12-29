@@ -65,7 +65,7 @@ struct MovieDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .background(Color(uiColor: .systemBackground))
+        .background(Color.black)
         .ignoresSafeArea(edges: .top) // Only ignore top for backdrop bleed
         .fullScreenCover(isPresented: $showingTrailer) {
             if let trailer = selectedTrailer {
@@ -102,7 +102,7 @@ struct MovieDetailView: View {
     }
     
     // MARK: - Backdrop Header
-    
+
     private var backdropHeader: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topLeading) {
@@ -110,139 +110,147 @@ struct MovieDetailView: View {
                 KFImage(movie.backdropURL)
                     .placeholder {
                         Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
+                            .fill(Color(white: 0.15))
                     }
                     .resizable()
                     .scaledToFill()
-                    .frame(width: geometry.size.width, height: 280)
+                    .frame(width: geometry.size.width, height: 300)
                     .clipped()
-                
-                // Gradient overlay
+
+                // Gradient overlay for readability
                 LinearGradient(
                     colors: [
-                        Color.black.opacity(0.7),
-                        Color.black.opacity(0.3),
-                        Color.clear
+                        Color.black.opacity(0.6),
+                        Color.black.opacity(0.2),
+                        Color.clear,
+                        Color.clear,
+                        Color.black.opacity(0.8)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(width: geometry.size.width, height: 280)
-                
-                // Close button
-                Button(action: onClose) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
+                .frame(width: geometry.size.width, height: 300)
+
+                // Close button - properly positioned below status bar
+                Button(action: {
+                    Haptics.shared.lightImpact()
+                    onClose()
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
-                        .padding()
+                        .frame(width: 32, height: 32)
                         .background(
                             Circle()
                                 .fill(.ultraThinMaterial)
                         )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                        )
                 }
-                .padding()
+                .padding(.top, 60) // Account for status bar + safe area
+                .padding(.leading, 20)
             }
         }
-        .frame(height: 280)
+        .frame(height: 300)
     }
     
     // MARK: - Title Section
-    
+
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(movie.title)
                 .font(.title.bold())
-                .foregroundColor(.primary)
-            
+                .foregroundColor(.white)
+                .lineLimit(3)
+                .truncationMode(.tail)
+                .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
+
             HStack(spacing: 16) {
                 // Rating
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Image(systemName: "star.fill")
                         .foregroundColor(.yellow)
                     Text(movie.formattedRating)
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(.white)
                 }
-                
+
                 // Vote count
                 Text("(\(movie.voteCount) reviews)")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.5))
             }
         }
     }
-    
+
     // MARK: - Quick Info
-    
+
     private var quickInfoSection: some View {
         HStack(spacing: 20) {
             if let year = movie.releaseYear {
                 Label(year, systemImage: "calendar")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.6))
             }
-            
+
             Label(movie.originalLanguage.uppercased(), systemImage: "globe")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.6))
         }
     }
     
     // MARK: - Overview
-    
+
     private var overviewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Overview")
                 .font(.title3.bold())
-            
+                .foregroundColor(.white)
+
             Text(movie.overview)
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.7))
                 .lineLimit(showingFullOverview ? nil : 4)
-            
+
             if movie.overview.count > 200 {
                 Button {
-                    withAnimation {
+                    withAnimation(.easeInOut(duration: 0.2)) {
                         showingFullOverview.toggle()
                     }
                 } label: {
                     Text(showingFullOverview ? "Show Less" : "Show More")
-                        .font(.subheadline.bold())
-                        .foregroundColor(.blue)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.white.opacity(0.5))
                 }
             }
         }
     }
     
     // MARK: - Genres
-    
+
     private var genresSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Genres")
                 .font(.title3.bold())
-            
+                .foregroundColor(.white)
+
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     ForEach(Genre.names(for: movie.genreIds), id: \.self) { genreName in
                         Text(genreName)
-                            .font(.subheadline)
+                            .font(.subheadline.weight(.medium))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
+                                    .fill(Color.white.opacity(0.1))
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
                             )
                             .foregroundColor(.primary)
                     }
@@ -252,44 +260,45 @@ struct MovieDetailView: View {
     }
     
     // MARK: - Action Buttons
-    
+
     private var actionButtons: some View {
         VStack(spacing: 12) {
             // Watchlist button
-            Button(action: onWatchlistToggle) {
+            Button(action: {
+                Haptics.shared.mediumImpact()
+                onWatchlistToggle()
+            }) {
                 HStack(spacing: 12) {
-                    Image(systemName: isInWatchlist ? "bookmark.fill" : "bookmark")
-                        .font(.title3)
-                    
-                    Text(isInWatchlist ? "Remove from Watchlist" : "Add to Watchlist")
+                    Image(systemName: isInWatchlist ? "checkmark" : "plus")
+                        .font(.system(size: 16, weight: .bold))
+
+                    Text(isInWatchlist ? "In Watchlist" : "Add to Watchlist")
                         .font(.headline)
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
+                .padding(.vertical, 16)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            LinearGradient(
-                                colors: isInWatchlist ? [.red, .orange] : [.blue, .purple],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(isInWatchlist ? Color.white.opacity(0.15) : Color.white)
                 )
-                .foregroundColor(.white)
-                .shadow(color: (isInWatchlist ? Color.red : Color.blue).opacity(0.3), radius: 10, x: 0, y: 5)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(isInWatchlist ? 0.3 : 0), lineWidth: 1)
+                )
+                .foregroundColor(isInWatchlist ? .white : .black)
             }
             .buttonStyle(ScaleButtonStyle())
         }
-        .padding(.top)
+        .padding(.top, 8)
     }
     
     // MARK: - Trailer Section
-    
+
     private var trailerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Trailers")
                 .font(.title3.bold())
+                .foregroundColor(.white)
             
             if trailers.count == 1 {
                 // Single trailer - large button

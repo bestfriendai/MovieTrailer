@@ -4,6 +4,7 @@
 //
 //  Created by Daniel Wijono on 10/12/2025.
 //  Redesigned with Apple TV aesthetic by Claude Code on 29/12/2025.
+//  Phase 3: Refactored navigation - removed NotificationCenter
 //
 
 import SwiftUI
@@ -17,6 +18,21 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
 
     @Published var selectedTab: Int = 0
     @Published var childCoordinators: [any Coordinator] = []
+
+    // Navigation state
+    @Published var selectedMovie: Movie?
+    @Published var showMovieDetailSheet = false
+    @Published var shouldPlayTrailer = false
+
+    // Search state for deep link support
+    @Published var pendingSearchQuery: String?
+
+    // Loading state for movie fetch
+    @Published var isLoadingMovie = false
+
+    // MARK: - Navigation Router
+
+    let router = NavigationRouter()
 
     // MARK: - Dependencies
 
@@ -83,32 +99,33 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
 
 struct TabCoordinatorView: View {
     @ObservedObject var coordinator: TabCoordinator
+    @State private var selectedTab: Int = 0
 
     var body: some View {
-        TabView(selection: $coordinator.selectedTab) {
+        TabView(selection: $selectedTab) {
             // Home Tab
             coordinator.homeTabView
                 .tabItem {
                     Label(
                         TabCoordinator.Tab.home.title,
-                        systemImage: coordinator.selectedTab == 0
+                        systemImage: selectedTab == 0
                             ? TabCoordinator.Tab.home.iconFilled
                             : TabCoordinator.Tab.home.icon
                     )
                 }
-                .tag(TabCoordinator.Tab.home.rawValue)
+                .tag(0)
 
             // Swipe Tab
             coordinator.swipeTabView
                 .tabItem {
                     Label(
                         TabCoordinator.Tab.swipe.title,
-                        systemImage: coordinator.selectedTab == 1
+                        systemImage: selectedTab == 1
                             ? TabCoordinator.Tab.swipe.iconFilled
                             : TabCoordinator.Tab.swipe.icon
                     )
                 }
-                .tag(TabCoordinator.Tab.swipe.rawValue)
+                .tag(1)
 
             // Search Tab
             coordinator.searchTabView
@@ -118,27 +135,54 @@ struct TabCoordinatorView: View {
                         systemImage: TabCoordinator.Tab.search.icon
                     )
                 }
-                .tag(TabCoordinator.Tab.search.rawValue)
+                .tag(2)
 
             // Library Tab
             coordinator.libraryTabView
                 .tabItem {
                     Label(
                         TabCoordinator.Tab.library.title,
-                        systemImage: coordinator.selectedTab == 3
+                        systemImage: selectedTab == 3
                             ? TabCoordinator.Tab.library.iconFilled
                             : TabCoordinator.Tab.library.icon
                     )
                 }
-                .tag(TabCoordinator.Tab.library.rawValue)
+                .tag(3)
         }
         .tint(.white)
         .preferredColorScheme(.dark)
+        .fullScreenCover(isPresented: $coordinator.showMovieDetailSheet) {
+            if let movie = coordinator.selectedMovie {
+                MovieDetailView(
+                    movie: movie,
+                    isInWatchlist: coordinator.watchlistManager.contains(movie),
+                    onWatchlistToggle: {
+                        coordinator.toggleWatchlist(for: movie)
+                    },
+                    onClose: {
+                        coordinator.dismissMovieDetail()
+                    },
+                    tmdbService: coordinator.tmdbService
+                )
+            }
+        }
+        .onChange(of: selectedTab) { _, newValue in
+            coordinator.selectedTab = newValue
+            Haptics.shared.selectionChanged()
+        }
         .onAppear {
-            // Dark tab bar appearance
+            // Native iOS liquid glass tab bar appearance
             let appearance = UITabBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = UIColor.black
+            appearance.configureWithDefaultBackground()
+            appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterialDark)
+            appearance.backgroundColor = UIColor.black.withAlphaComponent(0.2)
+
+            // Tab item colors
+            appearance.stackedLayoutAppearance.selected.iconColor = .white
+            appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.white]
+            appearance.stackedLayoutAppearance.normal.iconColor = UIColor.white.withAlphaComponent(0.6)
+            appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white.withAlphaComponent(0.6)]
+
             UITabBar.appearance().standardAppearance = appearance
             UITabBar.appearance().scrollEdgeAppearance = appearance
 
@@ -174,16 +218,16 @@ extension TabCoordinator {
             ),
             onMovieTap: { movie in
                 self.showMovieDetail(movie)
+            },
+            onPlayTrailer: { movie in
+                self.playTrailer(movie)
             }
         )
     }
 
     var searchTabView: some View {
-        SearchView(
-            viewModel: SearchViewModel(
-                tmdbService: tmdbService,
-                watchlistManager: watchlistManager
-            ),
+        SearchViewWrapper(
+            coordinator: self,
             onMovieTap: { movie in
                 self.showMovieDetail(movie)
             }
@@ -206,19 +250,33 @@ extension TabCoordinator {
     // MARK: - Navigation Helpers
 
     func showMovieDetail(_ movie: Movie) {
-        NotificationCenter.default.post(
-            name: .showMovieDetail,
-            object: nil,
-            userInfo: ["movieId": movie.id]
-        )
+        Haptics.shared.lightImpact()
+        selectedMovie = movie
+        shouldPlayTrailer = false
+        showMovieDetailSheet = true
     }
 
     func playTrailer(_ movie: Movie) {
-        NotificationCenter.default.post(
-            name: .showMovieDetail,
-            object: nil,
-            userInfo: ["movieId": movie.id, "playTrailer": true]
-        )
+        Haptics.shared.lightImpact()
+        selectedMovie = movie
+        shouldPlayTrailer = true
+        showMovieDetailSheet = true
+    }
+
+    func dismissMovieDetail() {
+        showMovieDetailSheet = false
+        selectedMovie = nil
+        shouldPlayTrailer = false
+    }
+
+    func toggleWatchlist(for movie: Movie) {
+        if watchlistManager.contains(movie) {
+            watchlistManager.remove(movie)
+            Haptics.shared.lightImpact()
+        } else {
+            watchlistManager.add(movie)
+            Haptics.shared.success()
+        }
     }
 
     func start() {
@@ -243,5 +301,66 @@ extension TabCoordinator {
     /// Select tab by index
     func selectTab(index: Int) {
         selectedTab = index
+    }
+
+    // MARK: - Deep Link Navigation
+
+    /// Navigate to movie detail by ID (fetches movie data first)
+    func navigateToMovie(id: Int) async {
+        print("📱 TabCoordinator: Navigating to movie ID: \(id)")
+
+        isLoadingMovie = true
+
+        do {
+            let movie = try await tmdbService.fetchMovieDetails(id: id)
+            isLoadingMovie = false
+            showMovieDetail(movie)
+        } catch {
+            isLoadingMovie = false
+            print("❌ Failed to fetch movie \(id): \(error.localizedDescription)")
+        }
+    }
+
+    /// Perform search with query (switches to search tab)
+    func performSearch(query: String) {
+        print("📱 TabCoordinator: Performing search for: \(query)")
+
+        selectTab(.search)
+        pendingSearchQuery = query
+    }
+
+    /// Clear pending search query after it's been consumed
+    func clearPendingSearchQuery() {
+        pendingSearchQuery = nil
+    }
+}
+
+// MARK: - Search View Wrapper
+
+/// Wrapper view that handles deep link search queries
+struct SearchViewWrapper: View {
+    @ObservedObject var coordinator: TabCoordinator
+    let onMovieTap: (Movie) -> Void
+
+    @StateObject private var viewModel: SearchViewModel
+
+    init(coordinator: TabCoordinator, onMovieTap: @escaping (Movie) -> Void) {
+        self.coordinator = coordinator
+        self.onMovieTap = onMovieTap
+        _viewModel = StateObject(wrappedValue: SearchViewModel(
+            tmdbService: coordinator.tmdbService,
+            watchlistManager: coordinator.watchlistManager
+        ))
+    }
+
+    var body: some View {
+        SearchView(viewModel: viewModel, onMovieTap: onMovieTap)
+            .onChange(of: coordinator.pendingSearchQuery) { _, newQuery in
+                if let query = newQuery, !query.isEmpty {
+                    viewModel.searchQuery = query
+                    viewModel.search()
+                    coordinator.clearPendingSearchQuery()
+                }
+            }
     }
 }

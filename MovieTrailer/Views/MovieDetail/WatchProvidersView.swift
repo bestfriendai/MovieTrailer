@@ -25,16 +25,11 @@ struct WatchProvidersView: View {
             HStack(spacing: 8) {
                 Image(systemName: "play.tv.fill")
                     .font(.title2)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .foregroundColor(.white)
 
                 Text("Where to Watch")
-                    .font(.title2.bold())
+                    .font(.title3.bold())
+                    .foregroundColor(.white)
 
                 Spacer()
 
@@ -44,7 +39,7 @@ struct WatchProvidersView: View {
                     } label: {
                         Text("See All")
                             .font(.subheadline)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.white.opacity(0.5))
                     }
                 }
             }
@@ -91,7 +86,7 @@ struct WatchProvidersView: View {
                         ProviderSection(
                             title: "Free",
                             icon: "gift.fill",
-                            color: .purple,
+                            color: .cyan,
                             providers: providers.free
                         )
                     }

@@ -69,7 +69,7 @@ struct CinematicHero: View {
                 // Content overlay
                 heroContent
                     .padding(.horizontal, Spacing.horizontal)
-                    .padding(.bottom, Spacing.lg)
+                    .padding(.bottom, 70) // Extra space for page indicators
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
@@ -113,6 +113,8 @@ struct CinematicHero: View {
                 .foregroundColor(.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
+                .truncationMode(.tail)
+                .minimumScaleFactor(0.8)
                 .shadow(color: .black.opacity(0.6), radius: 8, x: 0, y: 4)
 
             // Metadata row
@@ -269,7 +271,7 @@ struct CinematicHeroCarousel: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             // Carousel
             TabView(selection: $currentIndex) {
                 ForEach(Array(movies.prefix(5).enumerated()), id: \.element.id) { index, movie in
@@ -286,11 +288,11 @@ struct CinematicHeroCarousel: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .frame(height: Size.heroHeight)
 
-            // Page indicators
+            // Page indicators - positioned inside the hero area
             pageIndicators
-                .padding(.top, -Spacing.xl)
-                .zIndex(1)
+                .padding(.bottom, 16)
         }
+        .frame(height: Size.heroHeight)
         .onReceive(timer) { _ in
             guard isAutoPlaying else { return }
             advanceCarousel()

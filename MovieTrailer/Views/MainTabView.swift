@@ -169,7 +169,7 @@ extension MainTabView {
 
         var color: Color {
             switch self {
-            case .discover: return .purple
+            case .discover: return .cyan
             case .tonight: return .orange
             case .search: return .blue
             case .watchlist: return .pink

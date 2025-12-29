@@ -200,6 +200,30 @@ actor TMDBService {
         )
     }
 
+    /// Fetch now playing movies (currently in theaters)
+    func fetchNowPlaying(page: Int = 1) async throws -> MovieResponse {
+        try await request(
+            endpoint: .nowPlaying(page: page),
+            responseType: MovieResponse.self
+        )
+    }
+
+    /// Fetch upcoming movies
+    func fetchUpcoming(page: Int = 1) async throws -> MovieResponse {
+        try await request(
+            endpoint: .upcoming(page: page),
+            responseType: MovieResponse.self
+        )
+    }
+
+    /// Fetch recent movies (last 6 months with good ratings)
+    func fetchRecentMovies(page: Int = 1) async throws -> MovieResponse {
+        try await request(
+            endpoint: .discoverRecent(page: page),
+            responseType: MovieResponse.self
+        )
+    }
+
     /// Search movies by query
     func searchMovies(query: String, page: Int = 1) async throws -> MovieResponse {
         guard !query.isEmpty else {
@@ -287,6 +311,12 @@ actor TMDBService {
                             return try await self.fetchPopular(page: page)
                         case .topRated:
                             return try await self.fetchTopRated(page: page)
+                        case .nowPlaying:
+                            return try await self.fetchNowPlaying(page: page)
+                        case .upcoming:
+                            return try await self.fetchUpcoming(page: page)
+                        case .discoverRecent:
+                            return try await self.fetchRecentMovies(page: page)
                         default:
                             throw NetworkError.invalidURL
                         }

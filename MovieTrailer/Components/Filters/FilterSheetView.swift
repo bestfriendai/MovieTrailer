@@ -172,7 +172,7 @@ struct FilterSheetView: View {
 
             // Service grid
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: Spacing.sm) {
-                ForEach(Array(StreamingService.allCases.prefix(8)), id: \.id) { service in
+                ForEach(Array(FilterStreamingProvider.allCases.prefix(8)), id: \.id) { service in
                     streamingServiceButton(service)
                 }
             }
@@ -203,7 +203,7 @@ struct FilterSheetView: View {
         }
     }
 
-    private func streamingServiceButton(_ service: StreamingService) -> some View {
+    private func streamingServiceButton(_ service: FilterStreamingProvider) -> some View {
         let isSelected = tempFilter.selectedServices.contains(service)
 
         return Button {
@@ -250,7 +250,7 @@ struct FilterSheetView: View {
                 .foregroundColor(.textSecondary)
 
             FlowLayout(spacing: Spacing.xs) {
-                ForEach(Genre.allCases) { genre in
+                ForEach(FilterGenre.allCases) { genre in
                     genreChip(genre, isExcluded: false)
                 }
             }
@@ -261,14 +261,14 @@ struct FilterSheetView: View {
                 .padding(.top, Spacing.sm)
 
             FlowLayout(spacing: Spacing.xs) {
-                ForEach(Genre.allCases) { genre in
+                ForEach(FilterGenre.allCases) { genre in
                     genreChip(genre, isExcluded: true)
                 }
             }
         }
     }
 
-    private func genreChip(_ genre: Genre, isExcluded: Bool) -> some View {
+    private func genreChip(_ genre: FilterGenre, isExcluded: Bool) -> some View {
         let isSelected = isExcluded ?
             tempFilter.excludedGenres.contains(genre) :
             tempFilter.includedGenres.contains(genre)

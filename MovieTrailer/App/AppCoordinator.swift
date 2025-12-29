@@ -263,26 +263,18 @@ final class AppCoordinator: ObservableObject {
     private func navigateToMovie(id: Int) async {
         print("📱 Navigating to movie: \(id)")
 
-        // Notify the tab coordinator to show movie detail
-        // This would typically trigger navigation in the current tab
-        NotificationCenter.default.post(
-            name: .showMovieDetail,
-            object: nil,
-            userInfo: ["movieId": id]
-        )
+        // Directly call TabCoordinator to navigate by ID
+        await tabCoordinator?.navigateToMovie(id: id)
     }
 
     private func navigateToSearch(query: String) {
         print("📱 Navigating to search: \(query)")
 
-        tabCoordinator?.selectTab(TabCoordinator.Tab.search)
-
-        if !query.isEmpty {
-            NotificationCenter.default.post(
-                name: .performSearch,
-                object: nil,
-                userInfo: ["query": query]
-            )
+        // Directly call TabCoordinator to perform search
+        if query.isEmpty {
+            tabCoordinator?.selectTab(TabCoordinator.Tab.search)
+        } else {
+            tabCoordinator?.performSearch(query: query)
         }
     }
 
@@ -302,10 +294,16 @@ final class AppCoordinator: ObservableObject {
     }
 }
 
-// MARK: - Notification Names
+// MARK: - Notification Names (Deprecated)
+// These notification names are kept for backwards compatibility
+// but are no longer used. Navigation is now handled directly
+// through TabCoordinator methods.
 
 extension Notification.Name {
+    @available(*, deprecated, message: "Use TabCoordinator.navigateToMovie(id:) instead")
     static let showMovieDetail = Notification.Name("showMovieDetail")
+
+    @available(*, deprecated, message: "Use TabCoordinator.performSearch(query:) instead")
     static let performSearch = Notification.Name("performSearch")
 }
 

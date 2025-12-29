@@ -107,6 +107,9 @@ struct LargePosterCard: View {
                         .font(.headline2)
                         .foregroundColor(.textPrimary)
                         .lineLimit(2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: cardWidth - 24, alignment: .leading)
 
                     HStack(spacing: Spacing.xs) {
                         if let year = movie.releaseYear {
@@ -130,6 +133,7 @@ struct LargePosterCard: View {
                         }
                     }
                 }
+                .frame(width: cardWidth - 24, alignment: .leading)
                 .padding(Spacing.md)
             }
             .frame(width: cardWidth, height: cardHeight)
@@ -142,12 +146,7 @@ struct LargePosterCard: View {
             .scaleEffect(isPressed ? 0.96 : 1.0)
             .animation(AppTheme.Animation.quick, value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressableCardStyle(isPressed: $isPressed))
     }
 
     private var posterImage: some View {
@@ -370,12 +369,14 @@ struct FeaturedMovieCard: View {
                 )
 
                 // Content
-                HStack(alignment: .bottom) {
+                HStack(alignment: .bottom, spacing: Spacing.sm) {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(movie.title)
                             .font(.headline2)
                             .foregroundColor(.textPrimary)
                             .lineLimit(2)
+                            .truncationMode(.tail)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         HStack(spacing: Spacing.sm) {
                             // Rating
@@ -397,8 +398,9 @@ struct FeaturedMovieCard: View {
                             }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Spacer()
+                    Spacer(minLength: 0)
 
                     // Play trailer button
                     if onTrailerTap != nil {
@@ -428,12 +430,7 @@ struct FeaturedMovieCard: View {
             .scaleEffect(isPressed ? 0.97 : 1.0)
             .animation(AppTheme.Animation.quick, value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressableCardStyle(isPressed: $isPressed))
     }
 }
 
@@ -538,12 +535,7 @@ struct StreamingPosterCard: View {
             .scaleEffect(isPressed ? 0.96 : 1.0)
             .animation(AppTheme.Animation.quick, value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressableCardStyle(isPressed: $isPressed))
     }
 }
 
@@ -707,18 +699,28 @@ struct PremiumPosterCard: View {
                         .font(size.titleFont)
                         .foregroundColor(.textPrimary)
                         .lineLimit(2)
+                        .truncationMode(.tail)
                         .frame(width: size.width, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .scaleEffect(isPressed ? 0.96 : 1.0)
             .animation(AppTheme.Animation.quick, value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressableCardStyle(isPressed: $isPressed))
+    }
+}
+
+// MARK: - Pressable Card Style
+
+struct PressableCardStyle: ButtonStyle {
+    @Binding var isPressed: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .onChange(of: configuration.isPressed) { _, newValue in
+                isPressed = newValue
+            }
     }
 }
 

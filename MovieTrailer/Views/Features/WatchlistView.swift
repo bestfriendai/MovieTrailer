@@ -116,7 +116,7 @@ struct WatchlistView: View {
                 value: estimatedWatchTime,
                 label: "Watch Time",
                 icon: "clock.fill",
-                color: .purple
+                color: .cyan
             )
 
             // Top genre
@@ -147,10 +147,13 @@ struct WatchlistView: View {
                 Text(value)
                     .font(.headline2)
                     .foregroundColor(.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
 
                 Text(label)
                     .font(.labelSmall)
                     .foregroundColor(.textTertiary)
+                    .lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity)

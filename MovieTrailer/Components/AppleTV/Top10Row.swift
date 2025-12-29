@@ -35,7 +35,7 @@ struct Top10Row: View {
 
             // Horizontal scroll
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
+                HStack(spacing: 8) {
                     ForEach(Array(movies.prefix(10).enumerated()), id: \.element.id) { index, movie in
                         Top10Card(
                             movie: movie,
@@ -45,7 +45,9 @@ struct Top10Row: View {
                     }
                 }
                 .padding(.horizontal, 20)
+                .padding(.vertical, 8)
             }
+            .clipped()
         }
     }
 }
@@ -81,11 +83,13 @@ struct Top10Card: View {
 
     private var rankingNumber: some View {
         Text("\(rank)")
-            .font(.system(size: 100, weight: .heavy, design: .rounded))
+            .font(.system(size: rank >= 10 ? 56 : 72, weight: .heavy, design: .rounded))
             .foregroundStyle(rankGradient)
             .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 2)
-            .frame(width: 60)
-            .offset(y: 10)
+            .frame(width: rank >= 10 ? 70 : 55, alignment: .trailing)
+            .offset(y: 20)
+            .minimumScaleFactor(0.7)
+            .lineLimit(1)
     }
 
     private var rankGradient: LinearGradient {

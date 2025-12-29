@@ -60,6 +60,9 @@ struct MovieHeaderView: View {
                 Text(movie.title)
                     .font(.title2.bold())
                     .foregroundColor(.white)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.85)
 
                 ratingRow
             }
@@ -173,6 +176,9 @@ struct MovieHeaderView: View {
                     Text(movie.title)
                         .font(.largeTitle.bold())
                         .foregroundColor(.white)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .minimumScaleFactor(0.8)
                         .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
 
                     // Rating and info
@@ -369,6 +375,9 @@ struct ParallaxMovieHeader: View {
                     Text(movie.title)
                         .font(.title.bold())
                         .foregroundColor(.white)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .minimumScaleFactor(0.85)
 
                     HStack(spacing: 8) {
                         Image(systemName: "star.fill")

@@ -2,18 +2,17 @@
 //  SearchView.swift
 //  MovieTrailer
 //
-//  Apple 2025 Premium Search Experience
-//  Voice search, filters, and browse sections
+//  Premium Search & Discovery Experience
 //
 
 import SwiftUI
+import Kingfisher
 
 struct SearchView: View {
 
     @StateObject private var viewModel: SearchViewModel
+    @StateObject private var voiceSearch = VoiceSearchManager()
     @FocusState private var isSearchFocused: Bool
-    @State private var animateResults = false
-    @State private var selectedBrowseCategory: BrowseCategory?
 
     let onMovieTap: (Movie) -> Void
 
@@ -24,680 +23,426 @@ struct SearchView: View {
 
     var body: some View {
         ZStack {
-            // Background
-            Color.appBackground.ignoresSafeArea()
+            Color.black.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Premium search bar
-                premiumSearchBar
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Search bar
+                    searchBar
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
 
-                // Content
-                if viewModel.isSearching {
-                    searchLoadingView
-                } else if let error = viewModel.error, viewModel.searchResults.isEmpty {
-                    searchErrorView(error)
-                } else if viewModel.searchQuery.isEmpty {
-                    browseView
-                } else if viewModel.searchResults.isEmpty && !viewModel.isSearching {
-                    noResultsView
-                } else {
-                    searchResultsView
+                    // Content
+                    if viewModel.isSearching {
+                        loadingView
+                    } else if viewModel.searchQuery.isEmpty {
+                        browseContent
+                    } else if viewModel.searchResults.isEmpty {
+                        noResultsView
+                    } else {
+                        searchResultsGrid
+                    }
                 }
+                .padding(.bottom, 100)
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .preferredColorScheme(.dark)
-        .navigationTitle("Search")
-        .navigationBarTitleDisplayMode(.large)
-        .onTapGesture {
-            dismissKeyboard()
-        }
-        .gesture(
-            DragGesture()
-                .onChanged { _ in
-                    dismissKeyboard()
-                }
-        )
-        .scrollDismissesKeyboard(.interactively)
     }
 
-    // MARK: - Keyboard Dismissal
+    // MARK: - Search Bar
 
-    private func dismissKeyboard() {
-        isSearchFocused = false
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
+    private var searchBar: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(.white.opacity(0.5))
 
-    // MARK: - Premium Search Bar
-
-    private var premiumSearchBar: some View {
-        VStack(spacing: Spacing.sm) {
-            HStack(spacing: Spacing.sm) {
-                // Search field with glass effect
-                HStack(spacing: Spacing.sm) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.textTertiary)
-
-                    TextField("Search movies, TV shows...", text: $viewModel.searchQuery)
-                        .textFieldStyle(.plain)
-                        .font(.bodyLarge)
-                        .foregroundColor(.textPrimary)
-                        .focused($isSearchFocused)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .submitLabel(.search)
-                        .onSubmit {
-                            Haptics.shared.buttonTapped()
-                            viewModel.search()
-                        }
-                        .onChange(of: viewModel.searchQuery) { _ in
-                            viewModel.search()
-                        }
-
-                    if !viewModel.searchQuery.isEmpty {
-                        Button {
-                            Haptics.shared.lightImpact()
-                            viewModel.clearSearch()
-                            isSearchFocused = true
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.textTertiary)
-                        }
-                    }
-
-                    // Voice search button
-                    Button {
-                        Haptics.shared.buttonTapped()
-                        // Voice search would be triggered here
-                    } label: {
-                        Image(systemName: "mic.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.accentPrimary)
-                    }
-                }
-                .padding(Spacing.md)
-                .background(Color.glassLight)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large, style: .continuous)
-                        .stroke(Color.glassBorder, lineWidth: 0.5)
-                )
-
-                // Filter button
-                Button {
-                    Haptics.shared.buttonTapped()
-                    // TODO: Implement filters
-                } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.textPrimary)
-                        .frame(width: 48, height: 48)
-                        .background(Color.glassLight)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
-                }
-                .buttonStyle(ScaleButtonStyle())
-
-                // Cancel button when searching
-                if isSearchFocused {
-                    Button("Cancel") {
-                        Haptics.shared.lightImpact()
-                        dismissKeyboard()
-                        viewModel.clearSearch()
-                    }
-                    .font(.buttonMedium)
-                    .foregroundColor(.accentPrimary)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
-            }
-            .padding(.horizontal, Spacing.horizontal)
-            .animation(AppTheme.Animation.smooth, value: isSearchFocused)
-
-        }
-        .padding(.vertical, Spacing.sm)
-    }
-
-    // MARK: - Browse View
-
-    private var browseView: some View {
-        ScrollView {
-            VStack(spacing: Spacing.xxl) {
-                // Browse by Category
-                browseCategoriesSection
-
-                // Trending Searches
-                trendingSearchesSection
-
-                // Browse by Genre
-                browseByGenreSection
-
-                // Browse by Streaming
-                browseByStreamingSection
-
-                // Bottom padding
-                Spacer()
-                    .frame(height: 120)
-            }
-            .padding(.top, Spacing.md)
-        }
-    }
-
-    private var browseCategoriesSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Browse")
-                .font(.headline1)
-                .foregroundColor(.textPrimary)
-                .padding(.horizontal, Spacing.horizontal)
-
-            LazyVGrid(
-                columns: [GridItem(.flexible()), GridItem(.flexible())],
-                spacing: Spacing.md
-            ) {
-                ForEach(BrowseCategory.allCases) { category in
-                    BrowseCategoryCard(category: category) {
-                        Haptics.shared.cardTapped()
-                        viewModel.searchQuery = category.searchQuery
+                TextField("Search movies, TV shows...", text: $viewModel.searchQuery)
+                    .font(.system(size: 17))
+                    .foregroundColor(.white)
+                    .focused($isSearchFocused)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.search)
+                    .onSubmit {
                         viewModel.search()
                     }
+
+                if !viewModel.searchQuery.isEmpty {
+                    Button {
+                        viewModel.clearSearch()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 17))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                }
+
+                // Voice Search Button
+                Button {
+                    Haptics.shared.lightImpact()
+                    voiceSearch.toggle()
+                } label: {
+                    Image(systemName: voiceSearch.state.isActive ? "mic.fill" : "mic")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(voiceSearch.state.isActive ? .cyan : .white.opacity(0.5))
+                        .symbolEffect(.pulse, isActive: voiceSearch.state == .listening)
                 }
             }
-            .padding(.horizontal, Spacing.horizontal)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(voiceSearch.state.isActive ? Color.cyan.opacity(0.15) : Color.white.opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(voiceSearch.state.isActive ? Color.cyan.opacity(0.5) : Color.clear, lineWidth: 1)
+            )
+            .animation(.easeInOut(duration: 0.2), value: voiceSearch.state.isActive)
+
+            if isSearchFocused || voiceSearch.state.isActive {
+                Button("Cancel") {
+                    isSearchFocused = false
+                    voiceSearch.stopListening()
+                    viewModel.clearSearch()
+                }
+                .font(.system(size: 17))
+                .foregroundColor(.white)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isSearchFocused)
+        .animation(.easeInOut(duration: 0.2), value: voiceSearch.state.isActive)
+        .onAppear {
+            voiceSearch.onTranscriptFinalized = { transcript in
+                viewModel.searchQuery = transcript
+                viewModel.search()
+            }
+        }
+        .onChange(of: voiceSearch.transcript) { _, newTranscript in
+            if voiceSearch.state == .listening && !newTranscript.isEmpty {
+                viewModel.searchQuery = newTranscript
+            }
         }
     }
 
-    private var trendingSearchesSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            HStack {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .foregroundColor(.accentPrimary)
-                Text("Trending Searches")
-                    .font(.headline2)
-                    .foregroundColor(.textPrimary)
-            }
-            .padding(.horizontal, Spacing.horizontal)
+    // MARK: - Browse Content
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.sm) {
-                    ForEach(trendingSearches, id: \.self) { term in
-                        TrendingSearchPill(text: term) {
-                            Haptics.shared.selectionChanged()
-                            viewModel.searchQuery = term
+    private var browseContent: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            // Quick Actions
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Quick Actions")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
+
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        QuickActionCard(
+                            title: "Trending Now",
+                            subtitle: "What's hot",
+                            icon: "flame.fill",
+                            color: .orange
+                        ) {
+                            viewModel.searchQuery = "popular 2024"
+                            viewModel.search()
+                        }
+
+                        QuickActionCard(
+                            title: "New Releases",
+                            subtitle: "Just dropped",
+                            icon: "sparkles",
+                            color: .cyan
+                        ) {
+                            viewModel.searchQuery = "2024"
+                            viewModel.search()
+                        }
+                    }
+
+                    HStack(spacing: 10) {
+                        QuickActionCard(
+                            title: "Top Rated",
+                            subtitle: "Best of all time",
+                            icon: "star.fill",
+                            color: .yellow
+                        ) {
+                            viewModel.searchQuery = "top rated"
+                            viewModel.search()
+                        }
+
+                        QuickActionCard(
+                            title: "Coming Soon",
+                            subtitle: "Mark your calendar",
+                            icon: "calendar",
+                            color: .green
+                        ) {
+                            viewModel.searchQuery = "upcoming 2025"
                             viewModel.search()
                         }
                     }
                 }
-                .padding(.horizontal, Spacing.horizontal)
+                .padding(.horizontal, 20)
             }
-        }
-    }
 
-    private var browseByGenreSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Browse by Genre")
-                .font(.headline2)
-                .foregroundColor(.textPrimary)
-                .padding(.horizontal, Spacing.horizontal)
+            // Trending Searches
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Trending Searches")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.sm) {
-                    ForEach(Genre.all) { genre in
-                        GenreCardView(genre: genre) {
-                            Haptics.shared.selectionChanged()
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(["Dune", "Oppenheimer", "Barbie", "Avatar", "Marvel", "Star Wars", "Batman"], id: \.self) { term in
+                            Button {
+                                viewModel.searchQuery = term
+                                viewModel.search()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 12))
+                                    Text(term)
+                                        .font(.system(size: 14, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.white.opacity(0.1))
+                                .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
+
+            // Browse by Genre
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Browse by Genre")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
+
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10)
+                ], spacing: 12) {
+                    ForEach(Genre.all.prefix(12)) { genre in
+                        GenreCard(genre: genre) {
                             viewModel.searchQuery = genre.name
                             viewModel.search()
                         }
                     }
                 }
-                .padding(.horizontal, Spacing.horizontal)
+                .padding(.horizontal, 20)
             }
-        }
-    }
 
-    private var browseByStreamingSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Browse by Streaming")
-                .font(.headline2)
-                .foregroundColor(.textPrimary)
-                .padding(.horizontal, Spacing.horizontal)
+            // Browse by Streaming
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Browse by Streaming")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
 
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ],
-                spacing: Spacing.md
-            ) {
-                ForEach(StreamingService.allCases) { service in
-                    StreamingServiceCardView(service: service) {
-                        Haptics.shared.selectionChanged()
-                        viewModel.searchQuery = service.displayName
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10)
+                ], spacing: 10) {
+                    StreamingCard(name: "Netflix", color: Color(red: 0.89, green: 0.12, blue: 0.15)) {
+                        viewModel.searchQuery = "Netflix"
+                        viewModel.search()
+                    }
+                    StreamingCard(name: "Disney+", color: Color(red: 0.07, green: 0.22, blue: 0.56)) {
+                        viewModel.searchQuery = "Disney"
+                        viewModel.search()
+                    }
+                    StreamingCard(name: "Prime", color: Color(red: 0.0, green: 0.66, blue: 0.88)) {
+                        viewModel.searchQuery = "Amazon"
+                        viewModel.search()
+                    }
+                    StreamingCard(name: "Max", color: Color(red: 0.0, green: 0.14, blue: 0.53)) {
+                        viewModel.searchQuery = "HBO"
+                        viewModel.search()
+                    }
+                    StreamingCard(name: "Apple TV+", color: Color.gray) {
+                        viewModel.searchQuery = "Apple"
+                        viewModel.search()
+                    }
+                    StreamingCard(name: "Hulu", color: Color(red: 0.11, green: 0.81, blue: 0.49)) {
+                        viewModel.searchQuery = "Hulu"
+                        viewModel.search()
+                    }
+                    StreamingCard(name: "Peacock", color: Color(red: 0.0, green: 0.0, blue: 0.0)) {
+                        viewModel.searchQuery = "Peacock"
+                        viewModel.search()
+                    }
+                    StreamingCard(name: "Paramount+", color: Color(red: 0.0, green: 0.34, blue: 0.73)) {
+                        viewModel.searchQuery = "Paramount"
                         viewModel.search()
                     }
                 }
-            }
-            .padding(.horizontal, Spacing.horizontal)
-        }
-    }
-
-    private var trendingSearches: [String] {
-        ["Dune", "Oppenheimer", "Barbie", "Spider-Man", "Avatar", "Top Gun", "Marvel", "Star Wars"]
-    }
-
-    // MARK: - Search Results
-
-    private var searchResultsView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.md) {
-                // Results header
-                HStack {
-                    Text("\(viewModel.searchResults.count) results")
-                        .font(.labelMedium)
-                        .foregroundColor(.textSecondary)
-
-                    Spacer()
-
-                    // Sort button
-                    Menu {
-                        Button("Most Popular", action: {})
-                        Button("Highest Rated", action: {})
-                        Button("Newest First", action: {})
-                        Button("Title A-Z", action: {})
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text("Sort")
-                                .font(.labelMedium)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10, weight: .semibold))
-                        }
-                        .foregroundColor(.textSecondary)
-                    }
-                }
-                .padding(.horizontal, Spacing.horizontal)
-                .padding(.top, Spacing.sm)
-
-                // Results grid
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: Spacing.md),
-                        GridItem(.flexible(), spacing: Spacing.md)
-                    ],
-                    spacing: Spacing.lg
-                ) {
-                    ForEach(Array(viewModel.searchResults.enumerated()), id: \.element.id) { index, movie in
-                        SearchResultCard(
-                            movie: movie,
-                            isInWatchlist: viewModel.isInWatchlist(movie),
-                            onTap: {
-                                dismissKeyboard()
-                                Haptics.shared.cardTapped()
-                                onMovieTap(movie)
-                            },
-                            onWatchlistToggle: {
-                                viewModel.toggleWatchlist(for: movie)
-                            }
-                        )
-                        .opacity(animateResults ? 1 : 0)
-                        .offset(y: animateResults ? 0 : 20)
-                        .animation(
-                            AppTheme.Animation.smooth.delay(Double(index) * 0.03),
-                            value: animateResults
-                        )
-                    }
-                }
-                .padding(.horizontal, Spacing.horizontal)
-                .padding(.bottom, 120)
-            }
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .onAppear {
-            withAnimation {
-                animateResults = true
-            }
-        }
-        .onChange(of: viewModel.searchResults) { _ in
-            animateResults = false
-            withAnimation(AppTheme.Animation.smooth.delay(0.1)) {
-                animateResults = true
+                .padding(.horizontal, 20)
             }
         }
     }
 
     // MARK: - Loading View
 
-    private var searchLoadingView: some View {
-        VStack(spacing: Spacing.lg) {
-            ZStack {
-                Circle()
-                    .stroke(Color.glassLight, lineWidth: 3)
-                    .frame(width: 50, height: 50)
-
-                Circle()
-                    .trim(from: 0, to: 0.3)
-                    .stroke(Color.accentPrimary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .frame(width: 50, height: 50)
-                    .rotationEffect(.degrees(-90))
-                    .modifier(SearchSpinnerModifier())
-            }
-
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+                .tint(.white)
             Text("Searching...")
-                .font(.bodyMedium)
-                .foregroundColor(.textSecondary)
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.6))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Error View
-
-    private func searchErrorView(_ error: NetworkError) -> some View {
-        VStack(spacing: Spacing.xl) {
-            ZStack {
-                Circle()
-                    .fill(Color.glassLight)
-                    .frame(width: 100, height: 100)
-
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 40, weight: .medium))
-                    .foregroundColor(.orange)
-            }
-
-            VStack(spacing: Spacing.sm) {
-                Text("Search Failed")
-                    .font(.headline2)
-                    .foregroundColor(.textPrimary)
-
-                Text(error.errorDescription ?? "Please try again")
-                    .font(.bodyMedium)
-                    .foregroundColor(.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            Button {
-                Haptics.shared.buttonTapped()
-                viewModel.search()
-            } label: {
-                Text("Try Again")
-                    .font(.buttonMedium)
-                    .foregroundColor(.textInverted)
-                    .padding(.horizontal, Spacing.xl)
-                    .padding(.vertical, Spacing.md)
-                    .background(Color.white)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(ScaleButtonStyle())
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(Spacing.horizontal)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 100)
     }
 
     // MARK: - No Results
 
     private var noResultsView: some View {
-        VStack(spacing: Spacing.xl) {
-            ZStack {
-                Circle()
-                    .fill(Color.glassLight)
-                    .frame(width: 100, height: 100)
+        VStack(spacing: 16) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 48))
+                .foregroundColor(.white.opacity(0.3))
 
-                Image(systemName: "film.stack")
-                    .font(.system(size: 40, weight: .medium))
-                    .foregroundColor(.textTertiary)
-            }
+            Text("No results found")
+                .font(.title3.bold())
+                .foregroundColor(.white)
 
-            VStack(spacing: Spacing.sm) {
-                Text("No Results")
-                    .font(.headline2)
-                    .foregroundColor(.textPrimary)
-
-                Text("No movies found for \"\(viewModel.searchQuery)\"")
-                    .font(.bodyMedium)
-                    .foregroundColor(.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            Button {
-                Haptics.shared.buttonTapped()
-                viewModel.clearSearch()
-                isSearchFocused = true
-            } label: {
-                Text("Clear Search")
-                    .font(.buttonMedium)
-                    .foregroundColor(.textInverted)
-                    .padding(.horizontal, Spacing.xl)
-                    .padding(.vertical, Spacing.md)
-                    .background(Color.white)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(ScaleButtonStyle())
+            Text("Try a different search term")
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.6))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(Spacing.horizontal)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 100)
     }
-}
 
-// MARK: - Search Spinner Modifier
+    // MARK: - Search Results
 
-private struct SearchSpinnerModifier: ViewModifier {
-    @State private var isRotating = false
+    private var searchResultsGrid: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("\(viewModel.searchResults.count) Results")
+                .font(.headline)
+                .foregroundColor(.white.opacity(0.6))
+                .padding(.horizontal, 20)
 
-    func body(content: Content) -> some View {
-        content
-            .rotationEffect(.degrees(isRotating ? 360 : 0))
-            .animation(
-                Animation.linear(duration: 1.0).repeatForever(autoreverses: false),
-                value: isRotating
-            )
-            .onAppear {
-                isRotating = true
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
+            ], spacing: 16) {
+                ForEach(viewModel.searchResults) { movie in
+                    SearchResultCard(movie: movie) {
+                        onMovieTap(movie)
+                    }
+                }
             }
-    }
-}
-
-// MARK: - Browse Category
-
-enum BrowseCategory: String, CaseIterable, Identifiable {
-    case trending = "Trending"
-    case newReleases = "New Releases"
-    case topRated = "Top Rated"
-    case comingSoon = "Coming Soon"
-
-    var id: String { rawValue }
-
-    var icon: String {
-        switch self {
-        case .trending: return "flame.fill"
-        case .newReleases: return "sparkles"
-        case .topRated: return "star.fill"
-        case .comingSoon: return "calendar"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .trending: return .orange
-        case .newReleases: return .purple
-        case .topRated: return .yellow
-        case .comingSoon: return .blue
-        }
-    }
-
-    var searchQuery: String {
-        switch self {
-        case .trending: return "trending"
-        case .newReleases: return "2024"
-        case .topRated: return "top rated"
-        case .comingSoon: return "upcoming"
+            .padding(.horizontal, 20)
         }
     }
 }
 
-// MARK: - Browse Category Card
+// MARK: - Quick Action Card
 
-struct BrowseCategoryCard: View {
-    let category: BrowseCategory
+struct QuickActionCard: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let color: Color
     let action: () -> Void
-
-    @State private var isPressed = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Spacing.md) {
-                ZStack {
-                    Circle()
-                        .fill(category.color.opacity(0.2))
-                        .frame(width: 44, height: 44)
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(color)
+                    .frame(width: 40, height: 40)
+                    .background(color.opacity(0.2))
+                    .clipShape(Circle())
 
-                    Image(systemName: category.icon)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(category.color)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
                 }
-
-                Text(category.rawValue)
-                    .font(.headline3)
-                    .foregroundColor(.textPrimary)
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.textTertiary)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.3))
             }
-            .padding(Spacing.md)
-            .background(Color.glassLight)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
-            .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                    .stroke(Color.glassBorder, lineWidth: 0.5)
-            )
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(AppTheme.Animation.quick, value: isPressed)
+            .padding(12)
+            .background(Color.white.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
     }
 }
 
-// MARK: - Trending Search Pill
+// MARK: - Genre Card
 
-struct TrendingSearchPill: View {
-    let text: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12))
-                Text(text)
-                    .font(.labelMedium)
-            }
-            .foregroundColor(.textSecondary)
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.sm)
-            .background(Color.glassThin)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color.glassBorder, lineWidth: 0.5)
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
-    }
-}
-
-// MARK: - Genre Card View
-
-struct GenreCardView: View {
+struct GenreCard: View {
     let genre: Genre
     let action: () -> Void
 
-    @State private var isPressed = false
-
-    private var genreColor: Color {
-        Color.genre(genre.id)
-    }
-
-    private var genreIcon: String {
-        switch genre.id {
-        case 28: return "bolt.fill"          // Action
-        case 12: return "map.fill"           // Adventure
-        case 16: return "paintpalette.fill"  // Animation
-        case 35: return "face.smiling.fill"  // Comedy
-        case 80: return "magnifyingglass"    // Crime
-        case 99: return "video.fill"         // Documentary
-        case 18: return "theatermasks.fill"  // Drama
-        case 10751: return "figure.2.and.child.holdinghands" // Family
-        case 14: return "wand.and.stars"     // Fantasy
-        case 27: return "moon.fill"          // Horror
-        case 10749: return "heart.fill"      // Romance
-        case 878: return "sparkles"          // Sci-Fi
-        case 53: return "exclamationmark.triangle.fill" // Thriller
-        default: return "film"
-        }
-    }
-
     var body: some View {
         Button(action: action) {
-            VStack(spacing: Spacing.sm) {
-                ZStack {
-                    Circle()
-                        .fill(genreColor.opacity(0.2))
-                        .frame(width: 56, height: 56)
-
-                    Image(systemName: genreIcon)
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundColor(genreColor)
-                }
+            VStack(spacing: 8) {
+                Text(genre.emoji)
+                    .font(.system(size: 24))
 
                 Text(genre.name)
-                    .font(.labelSmall)
-                    .foregroundColor(.textSecondary)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
             }
-            .frame(width: 80)
-            .scaleEffect(isPressed ? 0.95 : 1.0)
-            .animation(AppTheme.Animation.quick, value: isPressed)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
     }
 }
 
-// MARK: - Streaming Service Card View
+// MARK: - Streaming Card
 
-struct StreamingServiceCardView: View {
-    let service: StreamingService
+struct StreamingCard: View {
+    let name: String
+    let color: Color
     let action: () -> Void
-
-    @State private var isPressed = false
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: Spacing.xs) {
-                Text(service.shortName)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 60, height: 36)
-                    .background(service.color)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .scaleEffect(isPressed ? 0.95 : 1.0)
-            .animation(AppTheme.Animation.quick, value: isPressed)
+            Text(name)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(color)
+                )
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
     }
 }
 
@@ -705,99 +450,81 @@ struct StreamingServiceCardView: View {
 
 struct SearchResultCard: View {
     let movie: Movie
-    let isInWatchlist: Bool
-    let onTap: () -> Void
-    let onWatchlistToggle: () -> Void
-
-    @State private var isPressed = false
+    let action: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: Spacing.sm) {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
                 // Poster
-                ZStack(alignment: .topTrailing) {
-                    KFImage(movie.posterURL)
-                        .placeholder {
-                            Rectangle()
-                                .fill(Color.surfaceSecondary)
-                                .shimmer(isActive: true)
-                        }
-                        .resizable()
-                        .aspectRatio(2/3, contentMode: .fill)
-                        .frame(height: 220)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
-
-                    // Watchlist button
-                    Button {
-                        Haptics.shared.addedToWatchlist()
-                        onWatchlistToggle()
-                    } label: {
-                        Image(systemName: isInWatchlist ? "bookmark.fill" : "bookmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(isInWatchlist ? .accentPrimary : .white)
-                            .frame(width: 32, height: 32)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
+                KFImage(movie.posterURL)
+                    .placeholder {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.1))
                     }
-                    .buttonStyle(ScaleButtonStyle())
-                    .padding(Spacing.xs)
-                }
+                    .resizable()
+                    .aspectRatio(2/3, contentMode: .fill)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-                // Info
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(movie.title)
-                        .font(.labelMedium)
-                        .foregroundColor(.textPrimary)
-                        .lineLimit(2)
+                // Title
+                Text(movie.title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
 
-                    HStack(spacing: Spacing.xs) {
-                        if movie.voteAverage > 0 {
-                            HStack(spacing: 2) {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.ratingStar)
-                                Text(movie.formattedRating)
-                                    .font(.labelSmall)
-                                    .foregroundColor(.textSecondary)
-                            }
-                        }
-
-                        if let year = movie.releaseYear {
-                            if movie.voteAverage > 0 {
-                                Text("•")
-                                    .foregroundColor(.textTertiary)
-                            }
-                            Text(year)
-                                .font(.labelSmall)
-                                .foregroundColor(.textTertiary)
-                        }
-                    }
+                // Rating
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.yellow)
+                    Text(movie.formattedRating)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.7))
                 }
             }
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(AppTheme.Animation.quick, value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
     }
 }
 
-// MARK: - KFImage Import
+// MARK: - Genre Emoji Extension
 
-import Kingfisher
+extension Genre {
+    var emoji: String {
+        switch id {
+        case 28: return "💥" // Action
+        case 12: return "🗺️" // Adventure
+        case 16: return "🎨" // Animation
+        case 35: return "😂" // Comedy
+        case 80: return "🔪" // Crime
+        case 99: return "📹" // Documentary
+        case 18: return "🎭" // Drama
+        case 10751: return "👨‍👩‍👧" // Family
+        case 14: return "🧙" // Fantasy
+        case 36: return "📜" // History
+        case 27: return "👻" // Horror
+        case 10402: return "🎵" // Music
+        case 9648: return "🔍" // Mystery
+        case 10749: return "💕" // Romance
+        case 878: return "🚀" // Science Fiction
+        case 10770: return "📺" // TV Movie
+        case 53: return "😰" // Thriller
+        case 10752: return "⚔️" // War
+        case 37: return "🤠" // Western
+        default: return "🎬"
+        }
+    }
+}
 
 // MARK: - Preview
 
 #if DEBUG
 struct SearchView_Previews: PreviewProvider {
     static var previews: some View {
-        NavigationStack {
-            SearchView(viewModel: .mock())
-        }
+        SearchView(
+            viewModel: SearchViewModel(
+                tmdbService: .shared,
+                watchlistManager: WatchlistManager()
+            )
+        )
         .preferredColorScheme(.dark)
     }
 }

@@ -26,11 +26,16 @@ final class MovieSwipeViewModel: ObservableObject {
     @Published var matchAnimation: Movie?
     @Published var showStats = false
 
+    // Taste profile for display
+    @Published var tasteProfile: TasteProfile?
+
     // MARK: - Dependencies
 
     private let tmdbService: TMDBService
     private let watchlistManager: WatchlistManager
     private let preferences: UserPreferences
+    private let recommendationEngine: RecommendationEngine
+    private let offlineCache: OfflineMovieCache
 
     private var currentPage = 1
     private var totalPages = 1
@@ -62,11 +67,15 @@ final class MovieSwipeViewModel: ObservableObject {
     init(
         tmdbService: TMDBService = .shared,
         watchlistManager: WatchlistManager,
-        preferences: UserPreferences = .shared
+        preferences: UserPreferences = .shared,
+        recommendationEngine: RecommendationEngine = .shared,
+        offlineCache: OfflineMovieCache = .shared
     ) {
         self.tmdbService = tmdbService
         self.watchlistManager = watchlistManager
         self.preferences = preferences
+        self.recommendationEngine = recommendationEngine
+        self.offlineCache = offlineCache
     }
 
     // MARK: - Public Methods
@@ -80,38 +89,70 @@ final class MovieSwipeViewModel: ObservableObject {
         currentPage = 1
 
         do {
-            // Fetch from multiple sources for variety
+            // Fetch from multiple sources - prioritize RECENT movies
             async let trending = tmdbService.fetchTrending(page: currentPage)
-            async let popular = tmdbService.fetchPopular(page: currentPage)
-            async let topRated = tmdbService.fetchTopRated(page: currentPage)
+            async let nowPlaying = tmdbService.fetchNowPlaying(page: currentPage)
+            async let recentMovies = tmdbService.fetchRecentMovies(page: currentPage)
 
-            let (trendingResult, popularResult, topRatedResult) = try await (trending, popular, topRated)
+            let (trendingResult, nowPlayingResult, recentResult) = try await (trending, nowPlaying, recentMovies)
 
-            // Combine and shuffle
+            // Combine and prioritize recent/current movies
             var allMovies: [Movie] = []
+            // Add trending first (usually current/popular movies)
             allMovies.append(contentsOf: trendingResult.results)
-            allMovies.append(contentsOf: popularResult.results)
-            allMovies.append(contentsOf: topRatedResult.results)
+            // Add now playing (movies in theaters)
+            allMovies.append(contentsOf: nowPlayingResult.results)
+            // Add recent movies discovered in last 6 months
+            allMovies.append(contentsOf: recentResult.results)
 
-            // Remove duplicates
-            let uniqueMovies = Array(Set(allMovies))
+            // Remove duplicates while preserving order
+            var seen = Set<Int>()
+            let uniqueMovies = allMovies.filter { movie in
+                guard !seen.contains(movie.id) else { return false }
+                seen.insert(movie.id)
+                return true
+            }
 
             // Filter by user preferences
             let filteredMovies = filterByPreferences(uniqueMovies)
 
-            // Shuffle for variety
-            movieQueue = filteredMovies.shuffled()
+            // Filter out already swiped movies using recommendation engine
+            let unseenMovies = await recommendationEngine.filterSwipedMovies(filteredMovies)
+
+            // Sort by recommendation score for personalized experience
+            let sortedMovies = await recommendationEngine.sortByRecommendation(unseenMovies)
+
+            // Cache movies for offline use
+            await offlineCache.cacheMovies(sortedMovies, category: .trending)
+
+            movieQueue = sortedMovies
             currentIndex = 0
 
             totalPages = min(trendingResult.totalPages, 10) // Cap at 10 pages
 
+            // Update taste profile for display
+            tasteProfile = await recommendationEngine.getTasteProfile()
+
             isLoading = false
         } catch let networkError as NetworkError {
+            // Try to load from cache if offline
+            await loadFromCacheIfAvailable()
             error = networkError
             isLoading = false
         } catch {
+            await loadFromCacheIfAvailable()
             self.error = .unknown
             isLoading = false
+        }
+    }
+
+    /// Load movies from offline cache
+    private func loadFromCacheIfAvailable() async {
+        let cachedMovies = await offlineCache.getMovies(for: .trending)
+        if !cachedMovies.isEmpty {
+            let unseenMovies = await recommendationEngine.filterSwipedMovies(cachedMovies)
+            movieQueue = unseenMovies
+            currentIndex = 0
         }
     }
 
@@ -126,13 +167,20 @@ final class MovieSwipeViewModel: ObservableObject {
         isLoading = true
 
         do {
-            let response = try await tmdbService.fetchTrending(page: currentPage)
+            // Fetch from multiple recent sources
+            async let trending = tmdbService.fetchTrending(page: currentPage)
+            async let recent = tmdbService.fetchRecentMovies(page: currentPage)
 
-            // Filter and append
-            let filtered = filterByPreferences(response.results)
-            let newMovies = filtered.filter { newMovie in
-                !movieQueue.contains { $0.id == newMovie.id }
-            }
+            let (trendingResult, recentResult) = try await (trending, recent)
+
+            var allMovies: [Movie] = []
+            allMovies.append(contentsOf: trendingResult.results)
+            allMovies.append(contentsOf: recentResult.results)
+
+            // Filter and append, removing duplicates
+            let filtered = filterByPreferences(allMovies)
+            let existingIds = Set(movieQueue.map(\.id))
+            let newMovies = filtered.filter { !existingIds.contains($0.id) }
 
             movieQueue.append(contentsOf: newMovies.shuffled())
             isLoading = false
@@ -147,10 +195,12 @@ final class MovieSwipeViewModel: ObservableObject {
 
         // Record preference
         let action: UserPreferences.SwipeAction
+        let recommendationAction: SwipeAction
         switch direction {
         case .right:
             likedMovies.append(movie)
             action = .liked
+            recommendationAction = .liked
             // Check for "match" animation (high rating + liked)
             if movie.voteAverage >= 8.0 && Bool.random() {
                 matchAnimation = movie
@@ -158,10 +208,12 @@ final class MovieSwipeViewModel: ObservableObject {
         case .left:
             skippedMovies.append(movie)
             action = .skipped
+            recommendationAction = .skipped
         case .up:
             watchLaterMovies.append(movie)
             watchlistManager.add(movie)
             action = .superLiked
+            recommendationAction = .superLiked
         }
 
         // Save preference for recommendations
@@ -173,6 +225,13 @@ final class MovieSwipeViewModel: ObservableObject {
             rating: movie.voteAverage
         )
         preferences.saveSwipePreference(preference)
+
+        // Record swipe in recommendation engine for personalization
+        Task {
+            await recommendationEngine.recordSwipe(movie: movie, action: recommendationAction)
+            // Update taste profile
+            tasteProfile = await recommendationEngine.getTasteProfile()
+        }
 
         // Move to next movie
         currentIndex += 1
