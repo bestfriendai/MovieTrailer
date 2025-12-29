@@ -88,7 +88,7 @@ struct SearchBarView: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: showCancelButton)
-        .onChange(of: isFocused) { _, focused in
+        .onChange(of: isFocused) { focused in
             withAnimation {
                 showCancelButton = focused
             }

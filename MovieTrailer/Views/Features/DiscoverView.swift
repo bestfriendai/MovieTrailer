@@ -58,9 +58,8 @@ struct DiscoverView: View {
             }
             .padding(.vertical)
         }
-        .background(Color(uiColor: .systemBackground))
         .navigationTitle("Discover")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             HapticManager.shared.pulledToRefresh()
             await viewModel.refresh()

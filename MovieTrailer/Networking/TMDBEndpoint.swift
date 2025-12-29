@@ -19,6 +19,7 @@ enum TMDBEndpoint {
     case genres
     case similarMovies(movieId: Int, page: Int)
     case recommendations(movieId: Int, page: Int)
+    case watchProviders(movieId: Int)
 
     // MARK: - Configuration
 
@@ -66,6 +67,8 @@ enum TMDBEndpoint {
             return "/movie/\(movieId)/similar"
         case .recommendations(let movieId, _):
             return "/movie/\(movieId)/recommendations"
+        case .watchProviders(let movieId):
+            return "/movie/\(movieId)/watch/providers"
         }
     }
 
@@ -87,7 +90,7 @@ enum TMDBEndpoint {
             items.append(URLQueryItem(name: "page", value: "\(page)"))
             items.append(URLQueryItem(name: "include_adult", value: "false"))
 
-        case .movieDetails, .videos, .genres:
+        case .movieDetails, .videos, .genres, .watchProviders:
             break // No additional parameters
 
         case .similarMovies(_, let page),
@@ -134,6 +137,9 @@ enum TMDBEndpoint {
             return .returnCacheDataElseLoad
         case .similarMovies, .recommendations:
             // Cache similar/recommendations for a few hours
+            return .returnCacheDataElseLoad
+        case .watchProviders:
+            // Cache watch providers for 1 day
             return .returnCacheDataElseLoad
         }
     }
@@ -192,6 +198,8 @@ extension TMDBEndpoint {
             return "Similar Movies (ID: \(movieId), Page \(page))"
         case .recommendations(let movieId, let page):
             return "Recommendations (ID: \(movieId), Page \(page))"
+        case .watchProviders(let movieId):
+            return "Watch Providers (ID: \(movieId))"
         }
     }
 

@@ -27,9 +27,7 @@ struct WatchlistView: View {
                 watchlistContent
             }
         }
-        .background(Color(uiColor: .systemBackground))
         .navigationTitle("Watchlist")
-        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             if !viewModel.isEmpty {
                 ToolbarItem(placement: .navigationBarTrailing) {

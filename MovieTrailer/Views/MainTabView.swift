@@ -92,24 +92,27 @@ struct MainTabView: View {
                 .tag(Tab.watchlist)
         }
         .tint(.primary)
-        .onChange(of: selectedTab) { _, newTab in
+        .onChange(of: selectedTab) { _ in
             HapticManager.shared.lightImpact()
         }
+        .glassEffect()
     }
 
     // MARK: - Tab Views
 
     private var discoverTab: some View {
-        NavigationStack {
-            DiscoverView(
-                viewModel: DiscoverViewModel(
-                    tmdbService: tmdbService,
-                    watchlistManager: watchlistManager
-                ),
-                onMovieTap: { movie in
-                    onMovieTap?(movie)
-                }
-            )
+        GlassEffectContainer {
+            NavigationStack {
+                DiscoverView(
+                    viewModel: DiscoverViewModel(
+                        tmdbService: tmdbService,
+                        watchlistManager: watchlistManager
+                    ),
+                    onMovieTap: { movie in
+                        onMovieTap?(movie)
+                    }
+                )
+            }
         }
     }
 
@@ -145,7 +148,8 @@ struct MainTabView: View {
         NavigationStack {
             WatchlistView(
                 viewModel: WatchlistViewModel(
-                    watchlistManager: watchlistManager
+                    watchlistManager: watchlistManager,
+                    liveActivityManager: .shared
                 ),
                 onItemTap: { item in
                     // Convert WatchlistItem to Movie for navigation

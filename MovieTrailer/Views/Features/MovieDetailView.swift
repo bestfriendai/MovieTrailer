@@ -21,6 +21,8 @@ struct MovieDetailView: View {
     @State private var selectedTrailer: Video?
     @State private var showingTrailer = false
     @State private var isLoadingTrailers = false
+    @State private var watchProviders: WatchProviderInfo = .empty
+    @State private var isLoadingProviders = false
     
     var body: some View {
         ScrollView {
@@ -43,7 +45,15 @@ struct MovieDetailView: View {
                     if !trailers.isEmpty {
                         trailerSection
                     }
-                    
+
+                    // Watch Providers (streaming platforms)
+                    WatchProvidersView(providers: watchProviders) { link in
+                        if let link = link, let url = URL(string: link) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    .padding(.horizontal, -20) // Offset parent padding for full-width
+
                     // Genres
                     genresSection
                     
@@ -87,6 +97,7 @@ struct MovieDetailView: View {
         }
         .task {
             await loadTrailers()
+            await loadWatchProviders()
         }
     }
     
@@ -344,7 +355,7 @@ struct MovieDetailView: View {
         print("🎬 MovieDetailView: Starting to load trailers for movie ID: \(movie.id)")
         isLoadingTrailers = true
         defer { isLoadingTrailers = false }
-        
+
         do {
             let videoResponse = try await tmdbService.fetchVideos(for: movie.id)
             await MainActor.run {
@@ -357,6 +368,20 @@ struct MovieDetailView: View {
         } catch {
             print("⚠️ MovieDetailView: Failed to load trailers: \(error)")
             // Silently fail - trailers are optional
+        }
+    }
+
+    private func loadWatchProviders() async {
+        isLoadingProviders = true
+        defer { isLoadingProviders = false }
+
+        do {
+            let providers = try await tmdbService.fetchWatchProviders(for: movie.id)
+            await MainActor.run {
+                watchProviders = providers
+            }
+        } catch {
+            // Silently fail - watch providers are optional
         }
     }
 }

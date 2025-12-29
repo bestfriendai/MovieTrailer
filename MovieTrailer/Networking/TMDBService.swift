@@ -237,6 +237,31 @@ actor TMDBService {
         )
     }
 
+    /// Fetch watch providers (streaming platforms) for a movie
+    /// - Parameters:
+    ///   - movieId: The TMDB movie ID
+    ///   - countryCode: ISO 3166-1 country code (default: "US")
+    /// - Returns: WatchProviderInfo with streaming, rent, and buy options
+    func fetchWatchProviders(for movieId: Int, countryCode: String = "US") async throws -> WatchProviderInfo {
+        let response = try await request(
+            endpoint: .watchProviders(movieId: movieId),
+            responseType: WatchProvidersResponse.self
+        )
+
+        // Get the country-specific results
+        guard let countryData = response.results[countryCode] else {
+            return .empty
+        }
+
+        return WatchProviderInfo(
+            streaming: countryData.flatrate ?? [],
+            rent: countryData.rent ?? [],
+            buy: countryData.buy ?? [],
+            free: (countryData.free ?? []) + (countryData.ads ?? []),
+            link: countryData.link
+        )
+    }
+
     // MARK: - Batch Operations with Rate Limiting
 
     /// Fetch multiple pages of movies concurrently with rate limiting
@@ -377,7 +402,12 @@ actor TMDBService {
 
 extension TMDBService {
     /// Shared instance with custom cached session
-    static let shared = TMDBService(urlSession: createCachedSession())
+    /// Certificate pinning is disabled in DEBUG to allow development without updating certificate hashes
+    #if DEBUG
+    static let shared = TMDBService(urlSession: createCachedSession(enforcePinning: false))
+    #else
+    static let shared = TMDBService(urlSession: createCachedSession(enforcePinning: true))
+    #endif
 }
 
 // MARK: - Preview/Testing Helpers

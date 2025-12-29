@@ -184,7 +184,7 @@ class LiveActivityManager: ObservableObject {
         autoEndTask = Task { [weak self] in
             do {
                 // Sleep for 2 hours (with cancellation check)
-                try await Task.sleep(for: .hours(2))
+                try await Task.sleep(nanoseconds: 2 * 60 * 60 * 1_000_000_000)
 
                 // Check if cancelled before proceeding
                 guard !Task.isCancelled else {

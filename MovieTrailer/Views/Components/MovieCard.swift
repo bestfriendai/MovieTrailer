@@ -165,7 +165,6 @@ struct MovieCard: View {
                 .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
         }
         .buttonStyle(.plain)
-        .buttonBorderShape(.circle)
         .accessibilityLabel(isInWatchlist ? "Remove from watchlist" : "Add to watchlist")
         .accessibilityAddTraits(.isButton)
     }

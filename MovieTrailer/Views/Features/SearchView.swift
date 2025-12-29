@@ -41,9 +41,7 @@ struct SearchView: View {
                 searchResultsView
             }
         }
-        .background(Color(uiColor: .systemBackground))
         .navigationTitle("Search")
-        .navigationBarTitleDisplayMode(.large)
         // MARK: - Keyboard Dismissal
         .onTapGesture {
             dismissKeyboard()
@@ -85,7 +83,7 @@ struct SearchView: View {
                         HapticManager.shared.searchResultTapped()
                         viewModel.search()
                     }
-                    .onChange(of: viewModel.searchQuery) { _, _ in
+                    .onChange(of: viewModel.searchQuery) { _ in
                         viewModel.search()
                     }
                     .accessibilityLabel("Search field")
@@ -180,7 +178,7 @@ struct SearchView: View {
                 animateResults = true
             }
         }
-        .onChange(of: viewModel.searchResults) { _, _ in
+        .onChange(of: viewModel.searchResults) { _ in
             animateResults = false
             withAnimation(.spring(response: 0.4, dampingFraction: 0.7).delay(0.1)) {
                 animateResults = true

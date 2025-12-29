@@ -33,9 +33,7 @@ struct TonightView: View {
                 recommendationsView
             }
         }
-        .background(Color(uiColor: .systemBackground))
         .navigationTitle("Tonight")
-        .navigationBarTitleDisplayMode(.large)
         .refreshable {
             HapticManager.shared.pulledToRefresh()
             await viewModel.refresh()

@@ -1,0 +1,138 @@
+name: MovieTrailer
+options:
+  bundleIdPrefix: com.movietrailer
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+packages:
+  Kingfisher:
+    url: https://github.com/onevcat/Kingfisher
+    from: "7.0.0"
+
+targets:
+  MovieTrailer:
+    type: application
+    platform: iOS
+    sources:
+      - path: MovieTrailer
+        excludes:
+          - "MovieTrailerTests/**"
+          - "MovieTrailerWidgets/**"
+          - "**/Info.plist"
+    dependencies:
+      - package: Kingfisher
+      - target: MovieTrailerWidgets
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.movietrailer.app
+        SUPPORTS_LIVE_ACTIVITIES: true
+        SUPPORTS_WIDGET_EXTENSION: true
+    info:
+      path: MovieTrailer/MovieTrailer/MovieTrailer-Info.plist
+      properties:
+        CFBundleDisplayName: MovieTrailer
+        CFBundleName: MovieTrailer
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: true
+        TMDB_API_KEY: f92702575f616766a4eff39c706415cc
+        CFBundleURLTypes:
+          - CFBundleURLName: com.movietrailer
+            CFBundleURLSchemes:
+              - movietrailer
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSExceptionDomains:
+            api.themoviedb.org:
+              NSExceptionRequiresForwardSecrecy: true
+              NSIncludesSubdomains: true
+              NSExceptionMinimumTLSVersion: TLSv1.2
+            image.tmdb.org:
+              NSExceptionRequiresForwardSecrecy: true
+              NSIncludesSubdomains: true
+              NSExceptionMinimumTLSVersion: TLSv1.2
+            themoviedb.org:
+              NSExceptionRequiresForwardSecrecy: true
+              NSIncludesSubdomains: true
+              NSExceptionMinimumTLSVersion: TLSv1.2
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: com.movietrailer.search
+            UIApplicationShortcutItemTitle: Search Movies
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeSearch
+          - UIApplicationShortcutItemType: com.movietrailer.watchlist
+            UIApplicationShortcutItemTitle: Watchlist
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeBookmark
+          - UIApplicationShortcutItemType: com.movietrailer.tonight
+            UIApplicationShortcutItemTitle: Tonight
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeFavorite
+    preBuildScripts: []
+    postBuildScripts: []
+
+  MovieTrailerWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: MovieTrailer/MovieTrailerWidgets
+        excludes:
+          - "**/Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.movietrailer.app.widgets
+        SUPPORTS_LIVE_ACTIVITIES: true
+        SKIP_INSTALL: true
+        LD_RUNPATH_SEARCH_PATHS: ["$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"]
+    info:
+      path: MovieTrailer/MovieTrailerWidgets/MovieTrailerWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: MovieTrailerWidgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - package: Kingfisher
+
+  MovieTrailerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MovieTrailer/MovieTrailerTests
+    dependencies:
+      - target: MovieTrailer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.movietrailer.tests
+        GENERATE_INFOPLIST_FILE: true
+
+schemes:
+  MovieTrailer:
+    build:
+      targets:
+        MovieTrailer: all
+        MovieTrailerWidgets: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MovieTrailerTests
+    archive:
+      config: Release

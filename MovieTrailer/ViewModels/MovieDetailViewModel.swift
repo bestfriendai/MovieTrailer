@@ -19,10 +19,12 @@ final class MovieDetailViewModel: ObservableObject {
     @Published private(set) var trailers: [Video] = []
     @Published private(set) var similarMovies: [Movie] = []
     @Published private(set) var recommendedMovies: [Movie] = []
+    @Published private(set) var watchProviders: WatchProviderInfo = .empty
 
     @Published private(set) var isLoadingTrailers = false
     @Published private(set) var isLoadingSimilar = false
     @Published private(set) var isLoadingRecommended = false
+    @Published private(set) var isLoadingProviders = false
 
     @Published var isInWatchlist: Bool = false
     @Published var selectedTrailer: Video?
@@ -48,7 +50,7 @@ final class MovieDetailViewModel: ObservableObject {
 
     /// Whether we have content to show
     var hasAdditionalContent: Bool {
-        !trailers.isEmpty || !similarMovies.isEmpty || !recommendedMovies.isEmpty
+        !trailers.isEmpty || !similarMovies.isEmpty || !recommendedMovies.isEmpty || !watchProviders.isEmpty
     }
 
     // MARK: - Initialization
@@ -79,6 +81,7 @@ final class MovieDetailViewModel: ObservableObject {
             group.addTask { await self.loadTrailers() }
             group.addTask { await self.loadSimilarMovies() }
             group.addTask { await self.loadRecommendedMovies() }
+            group.addTask { await self.loadWatchProviders() }
         }
     }
 
@@ -125,6 +128,19 @@ final class MovieDetailViewModel: ObservableObject {
         } catch {
             isLoadingRecommended = false
             // Silently fail - recommendations are optional
+        }
+    }
+
+    /// Load watch providers (streaming platforms)
+    func loadWatchProviders() async {
+        isLoadingProviders = true
+
+        do {
+            watchProviders = try await tmdbService.fetchWatchProviders(for: movie.id)
+            isLoadingProviders = false
+        } catch {
+            isLoadingProviders = false
+            // Silently fail - watch providers are optional
         }
     }
 

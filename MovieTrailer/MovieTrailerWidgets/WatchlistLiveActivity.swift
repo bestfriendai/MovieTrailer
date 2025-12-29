@@ -287,27 +287,4 @@ private struct MinimalView: View {
 }
 
 // MARK: - Preview
-
-#Preview("Notification", as: .content, using: WatchlistActivityAttributes.sample) {
-    WatchlistLiveActivity()
-} contentStates: {
-    WatchlistActivityAttributes.sampleState
-}
-
-#Preview("Dynamic Island Compact", as: .dynamicIsland(.compact), using: WatchlistActivityAttributes.sample) {
-    WatchlistLiveActivity()
-} contentStates: {
-    WatchlistActivityAttributes.sampleState
-}
-
-#Preview("Dynamic Island Expanded", as: .dynamicIsland(.expanded), using: WatchlistActivityAttributes.sample) {
-    WatchlistLiveActivity()
-} contentStates: {
-    WatchlistActivityAttributes.sampleState
-}
-
-#Preview("Dynamic Island Minimal", as: .dynamicIsland(.minimal), using: WatchlistActivityAttributes.sample) {
-    WatchlistLiveActivity()
-} contentStates: {
-    WatchlistActivityAttributes.sampleState
-}
+// Live Activity previews are best viewed in Xcode canvas with simulator
