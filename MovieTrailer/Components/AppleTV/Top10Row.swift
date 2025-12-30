@@ -16,21 +16,47 @@ struct Top10Row: View {
     let title: String
     let movies: [Movie]
     let onMovieTap: (Movie) -> Void
+    let onSeeAll: (() -> Void)?
+
+    init(
+        title: String,
+        movies: [Movie],
+        onMovieTap: @escaping (Movie) -> Void,
+        onSeeAll: (() -> Void)? = nil
+    ) {
+        self.title = title
+        self.movies = movies
+        self.onMovieTap = onMovieTap
+        self.onSeeAll = onSeeAll
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section header
-            HStack {
-                Text(title)
-                    .font(.title3.weight(.bold))
-                    .foregroundColor(.textPrimary)
+            // Section header - clickable
+            Button {
+                Haptics.shared.buttonTapped()
+                onSeeAll?()
+            } label: {
+                HStack {
+                    Text(title)
+                        .font(.title3.weight(.bold))
+                        .foregroundColor(.textPrimary)
 
-                Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.textTertiary)
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.textTertiary)
 
-                Spacer()
+                    Spacer()
+
+                    if onSeeAll != nil {
+                        Text("See All")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.accentPrimary)
+                    }
+                }
             }
+            .buttonStyle(.plain)
+            .disabled(onSeeAll == nil)
             .padding(.horizontal, 20)
 
             // Horizontal scroll

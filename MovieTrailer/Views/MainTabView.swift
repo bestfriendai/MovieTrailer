@@ -121,6 +121,18 @@ struct MainTabView: View {
                 // Convert WatchlistItem to Movie for navigation
                 let movie = item.toMovie()
                 onMovieTap?(movie)
+            },
+            onBrowseMovies: {
+                // Navigate to Home tab
+                withAnimation(AppTheme.Animation.smooth) {
+                    selectedTab = .home
+                }
+            },
+            onDiscover: {
+                // Navigate to Swipe tab
+                withAnimation(AppTheme.Animation.smooth) {
+                    selectedTab = .swipe
+                }
             }
         )
     }

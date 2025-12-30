@@ -13,26 +13,48 @@ import Combine
 final class SearchViewModel: ObservableObject {
     
     // MARK: - Published Properties
-    
+
     @Published var searchQuery = ""
     @Published var searchResults: [Movie] = []
     @Published var isSearching = false
     @Published var error: NetworkError?
-    
+    @Published var trendingSearches: [String] = []
+    @Published var isLoadingTrending = false
+
     // MARK: - Dependencies
-    
+
     private let tmdbService: TMDBService
     private let watchlistManager: WatchlistManager
-    
+
     // MARK: - Private Properties
-    
+
     private var searchTask: Task<Void, Never>?
-    
+
     // MARK: - Initialization
-    
+
     init(tmdbService: TMDBService, watchlistManager: WatchlistManager) {
         self.tmdbService = tmdbService
         self.watchlistManager = watchlistManager
+    }
+
+    // MARK: - Trending Searches
+
+    /// Load trending movie titles for search suggestions
+    func loadTrendingSearches() async {
+        guard trendingSearches.isEmpty else { return }
+        isLoadingTrending = true
+
+        do {
+            let response = try await tmdbService.fetchTrending(page: 1)
+            // Extract unique movie titles from trending
+            let titles = response.results.prefix(10).map { $0.title }
+            trendingSearches = Array(Set(titles)).prefix(8).map { $0 }
+            isLoadingTrending = false
+        } catch {
+            // Fallback to popular searches if trending fails
+            trendingSearches = ["Avatar", "Dune", "Marvel", "Star Wars", "Batman", "Spider-Man", "Action", "Comedy"]
+            isLoadingTrending = false
+        }
     }
     
     // MARK: - Public Methods
@@ -68,7 +90,8 @@ final class SearchViewModel: ObservableObject {
                 query: searchQuery,
                 page: 1
             )
-            searchResults = response.results
+            // Sort results by popularity for better relevance
+            searchResults = response.results.sorted { $0.popularity > $1.popularity }
             isSearching = false
         } catch let networkError as NetworkError {
             error = networkError
@@ -86,7 +109,104 @@ final class SearchViewModel: ObservableObject {
         searchResults = []
         error = nil
     }
-    
+
+    // MARK: - Quick Actions (Direct TMDB Endpoints)
+
+    /// Fetch trending movies directly from TMDB trending endpoint
+    func fetchTrending() async {
+        isSearching = true
+        error = nil
+        searchQuery = "Trending Now"
+
+        do {
+            let response = try await tmdbService.fetchTrending(page: 1)
+            searchResults = response.results
+            isSearching = false
+        } catch let networkError as NetworkError {
+            error = networkError
+            isSearching = false
+        } catch {
+            self.error = .unknown
+            isSearching = false
+        }
+    }
+
+    /// Fetch new releases from TMDB discover endpoint
+    func fetchNewReleases() async {
+        isSearching = true
+        error = nil
+        searchQuery = "New Releases"
+
+        do {
+            let response = try await tmdbService.fetchRecentMovies(page: 1)
+            searchResults = response.results
+            isSearching = false
+        } catch let networkError as NetworkError {
+            error = networkError
+            isSearching = false
+        } catch {
+            self.error = .unknown
+            isSearching = false
+        }
+    }
+
+    /// Fetch top rated movies from TMDB top-rated endpoint
+    func fetchTopRated() async {
+        isSearching = true
+        error = nil
+        searchQuery = "Top Rated"
+
+        do {
+            let response = try await tmdbService.fetchTopRated(page: 1)
+            searchResults = response.results
+            isSearching = false
+        } catch let networkError as NetworkError {
+            error = networkError
+            isSearching = false
+        } catch {
+            self.error = .unknown
+            isSearching = false
+        }
+    }
+
+    /// Fetch upcoming movies from TMDB upcoming endpoint
+    func fetchUpcoming() async {
+        isSearching = true
+        error = nil
+        searchQuery = "Coming Soon"
+
+        do {
+            let response = try await tmdbService.fetchUpcoming(page: 1)
+            searchResults = response.results
+            isSearching = false
+        } catch let networkError as NetworkError {
+            error = networkError
+            isSearching = false
+        } catch {
+            self.error = .unknown
+            isSearching = false
+        }
+    }
+
+    /// Fetch movies by genre from TMDB discover endpoint
+    func fetchByGenre(_ genreId: Int, genreName: String) async {
+        isSearching = true
+        error = nil
+        searchQuery = genreName
+
+        do {
+            let response = try await tmdbService.fetchMoviesByGenre(genreId, page: 1)
+            searchResults = response.results
+            isSearching = false
+        } catch let networkError as NetworkError {
+            error = networkError
+            isSearching = false
+        } catch {
+            self.error = .unknown
+            isSearching = false
+        }
+    }
+
     /// Check if movie is in watchlist
     func isInWatchlist(_ movie: Movie) -> Bool {
         watchlistManager.contains(movie)

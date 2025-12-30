@@ -11,16 +11,20 @@ import SwiftUI
 // MARK: - Category Definition
 
 enum MovieCategory: String, CaseIterable, Identifiable {
+    // Main categories for home screen
+    case trending = "Trending"
+    case popular = "Popular"
+    case topRated = "Top Rated"
+    case nowPlaying = "In Theaters"
+    case newReleases = "New Releases"
+    // Genre categories
     case all = "All"
-    case new = "New"
-    case classics = "Classics"
-    case tvShows = "TV Shows"
-    case animation = "Animation"
     case action = "Action"
     case comedy = "Comedy"
     case drama = "Drama"
     case horror = "Horror"
     case sciFi = "Sci-Fi"
+    case animation = "Animation"
     case romance = "Romance"
     case thriller = "Thriller"
     case documentary = "Documentary"
@@ -29,16 +33,18 @@ enum MovieCategory: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .trending: return "flame.fill"
+        case .popular: return "star.fill"
+        case .topRated: return "trophy.fill"
+        case .nowPlaying: return "popcorn.fill"
+        case .newReleases: return "sparkles"
         case .all: return "sparkles"
-        case .new: return "flame.fill"
-        case .classics: return "film.fill"
-        case .tvShows: return "tv.fill"
-        case .animation: return "paintpalette.fill"
         case .action: return "bolt.fill"
         case .comedy: return "face.smiling.fill"
         case .drama: return "theatermasks.fill"
         case .horror: return "moon.fill"
         case .sciFi: return "sparkle"
+        case .animation: return "paintpalette.fill"
         case .romance: return "heart.fill"
         case .thriller: return "eye.fill"
         case .documentary: return "video.fill"
@@ -47,16 +53,18 @@ enum MovieCategory: String, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
+        case .trending: return .orange
+        case .popular: return .yellow
+        case .topRated: return .purple
+        case .nowPlaying: return .red
+        case .newReleases: return .green
         case .all: return .gray
-        case .new: return .categoryNew
-        case .classics: return .categoryClassics
-        case .tvShows: return .categoryTV
-        case .animation: return .categoryAnimation
         case .action: return .categoryAction
         case .comedy: return .categoryComedy
         case .drama: return .categoryDrama
         case .horror: return .categoryHorror
         case .sciFi: return .categorySciFi
+        case .animation: return .categoryAnimation
         case .romance: return .categoryRomance
         case .thriller: return .categoryThriller
         case .documentary: return .categoryDocumentary
@@ -66,10 +74,8 @@ enum MovieCategory: String, CaseIterable, Identifiable {
     /// TMDB genre IDs for filtering
     var genreIds: [Int]? {
         switch self {
-        case .all: return nil
-        case .new: return nil  // Will filter by release date
-        case .classics: return nil  // Will filter by release date
-        case .tvShows: return nil  // Different API endpoint
+        case .trending, .popular, .topRated, .nowPlaying, .newReleases, .all:
+            return nil
         case .animation: return [16]
         case .action: return [28]
         case .comedy: return [35]
@@ -175,7 +181,7 @@ struct CategoryPill_Previews: PreviewProvider {
             // Individual pills
             HStack {
                 CategoryPill(category: .all, isSelected: true) {}
-                CategoryPill(category: .new, isSelected: false) {}
+                CategoryPill(category: .newReleases, isSelected: false) {}
                 CategoryPill(category: .action, isSelected: false) {}
             }
 

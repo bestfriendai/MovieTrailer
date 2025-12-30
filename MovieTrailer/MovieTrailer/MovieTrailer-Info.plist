@@ -66,6 +66,10 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>MovieTrailer uses speech recognition for voice search to help you find movies hands-free.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MovieTrailer needs microphone access for voice search functionality.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>

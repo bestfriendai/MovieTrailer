@@ -16,17 +16,25 @@ enum AppTheme {
     // MARK: - Animation Presets
 
     enum Animation {
+        // MARK: - Spring Presets (Apple 2025 Style)
+
+        /// Snappy - Quick response for buttons, toggles (feels instant)
+        static let snappy = SwiftUI.Animation.spring(response: 0.25, dampingFraction: 0.75)
+
         /// Standard spring for UI elements - 0.35s response
         static let standard = SwiftUI.Animation.spring(response: 0.35, dampingFraction: 0.75)
+
+        /// Smooth - Standard UI transitions
+        static let smooth = SwiftUI.Animation.spring(response: 0.35, dampingFraction: 0.82)
 
         /// Bouncy spring for playful elements - 0.4s response
         static let bouncy = SwiftUI.Animation.spring(response: 0.4, dampingFraction: 0.6)
 
+        /// Cinematic - Hero reveals, modal presentations
+        static let cinematic = SwiftUI.Animation.spring(response: 0.5, dampingFraction: 0.78)
+
         /// Stiff spring for quick responses - 0.25s response
         static let stiff = SwiftUI.Animation.spring(response: 0.25, dampingFraction: 0.85)
-
-        /// Smooth ease for subtle transitions - 0.3s
-        static let smooth = SwiftUI.Animation.easeInOut(duration: 0.3)
 
         /// Quick snap animation - 0.2s response
         static let snap = SwiftUI.Animation.spring(response: 0.2, dampingFraction: 0.9)
@@ -38,7 +46,11 @@ enum AppTheme {
         static let slow = SwiftUI.Animation.spring(response: 0.6, dampingFraction: 0.75)
 
         /// Interactive spring for gestures - 0.3s response
-        static let interactive = SwiftUI.Animation.spring(response: 0.3, dampingFraction: 0.65)
+        static let interactive = SwiftUI.Animation.interactiveSpring(
+            response: 0.3,
+            dampingFraction: 0.8,
+            blendDuration: 0.1
+        )
 
         /// Micro animation for tiny elements - 0.15s
         static let micro = SwiftUI.Animation.spring(response: 0.15, dampingFraction: 0.8)
@@ -46,8 +58,15 @@ enum AppTheme {
         /// Quick animation for press effects - 0.2s
         static let quick = SwiftUI.Animation.spring(response: 0.2, dampingFraction: 0.75)
 
+        // MARK: - Easing Presets
+
         /// Page transition - 0.4s ease
         static let pageTransition = SwiftUI.Animation.easeInOut(duration: 0.4)
+
+        /// Smooth ease for subtle transitions - 0.3s
+        static let smoothEase = SwiftUI.Animation.easeInOut(duration: 0.3)
+
+        // MARK: - Component-Specific
 
         /// Tab change animation
         static let tabChange = SwiftUI.Animation.spring(response: 0.35, dampingFraction: 0.8)
@@ -73,11 +92,18 @@ enum AppTheme {
         /// Carousel rotation
         static let carousel = SwiftUI.Animation.easeInOut(duration: 0.5)
 
+        // MARK: - Repeating Animations
+
         /// Shimmer animation
         static let shimmer = SwiftUI.Animation.linear(duration: 1.2).repeatForever(autoreverses: false)
 
         /// Pulse animation
         static let pulse = SwiftUI.Animation.easeInOut(duration: 1.0).repeatForever(autoreverses: true)
+
+        /// Glow pulse animation
+        static let glowPulse = SwiftUI.Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true)
+
+        // MARK: - Helper Functions
 
         /// Delayed animation helper
         static func delayed(_ delay: Double) -> SwiftUI.Animation {
@@ -87,6 +113,11 @@ enum AppTheme {
         /// Staggered animation for lists
         static func staggered(index: Int, baseDelay: Double = 0.05) -> SwiftUI.Animation {
             listItem.delay(Double(index) * baseDelay)
+        }
+
+        /// Custom spring with parameters
+        static func customSpring(response: Double, damping: Double) -> SwiftUI.Animation {
+            SwiftUI.Animation.spring(response: response, dampingFraction: damping)
         }
     }
 

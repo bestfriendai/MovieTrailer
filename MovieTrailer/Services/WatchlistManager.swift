@@ -223,6 +223,30 @@ class WatchlistManager: ObservableObject {
         }
     }
 
+    /// Mark an item as watched/unwatched
+    func toggleWatched(_ movieID: Int) {
+        guard let index = items.firstIndex(where: { $0.id == movieID }) else { return }
+        items[index].isWatched.toggle()
+        debouncedSave()
+    }
+
+    /// Mark an item as watched
+    func markAsWatched(_ movieID: Int) {
+        guard let index = items.firstIndex(where: { $0.id == movieID }) else { return }
+        items[index].isWatched = true
+        debouncedSave()
+    }
+
+    /// Get watched items
+    var watchedItems: [WatchlistItem] {
+        items.filter { $0.isWatched }
+    }
+
+    /// Get unwatched items (to watch)
+    var toWatchItems: [WatchlistItem] {
+        items.filter { !$0.isWatched }
+    }
+
     /// Remove all items from watchlist
     func clearAll() {
         items.removeAll()

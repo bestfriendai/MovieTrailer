@@ -25,17 +25,46 @@ final class WatchlistViewModel: ObservableObject {
     private let liveActivityManager: LiveActivityManager
     
     // MARK: - Computed Properties
-    
+
     var items: [WatchlistItem] {
         watchlistManager.sorted(by: sortOption)
     }
-    
+
     var isEmpty: Bool {
         watchlistManager.isEmpty
     }
-    
+
     var count: Int {
         watchlistManager.count
+    }
+
+    /// Get items filtered by collection
+    func items(for collection: LibraryCollection) -> [WatchlistItem] {
+        let sorted = watchlistManager.sorted(by: sortOption)
+        switch collection {
+        case .all:
+            return sorted
+        case .favorites:
+            return sorted.filter { $0.voteAverage >= 8.0 }
+        case .toWatch:
+            return sorted.filter { !$0.isWatched }
+        case .watched:
+            return sorted.filter { $0.isWatched }
+        }
+    }
+
+    /// Count items for a specific collection
+    func count(for collection: LibraryCollection) -> Int {
+        switch collection {
+        case .all:
+            return watchlistManager.count
+        case .favorites:
+            return watchlistManager.items.filter { $0.voteAverage >= 8.0 }.count
+        case .toWatch:
+            return watchlistManager.toWatchItems.count
+        case .watched:
+            return watchlistManager.watchedItems.count
+        }
     }
     
     // MARK: - Initialization
@@ -53,6 +82,11 @@ final class WatchlistViewModel: ObservableObject {
     /// Remove item from watchlist
     func removeItem(_ item: WatchlistItem) {
         watchlistManager.remove(item.id)
+    }
+
+    /// Toggle item watched status
+    func toggleWatched(_ item: WatchlistItem) {
+        watchlistManager.toggleWatched(item.id)
     }
     
     /// Clear all items

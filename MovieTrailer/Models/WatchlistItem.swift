@@ -19,6 +19,10 @@ struct WatchlistItem: Codable, Identifiable, Hashable {
     let genreIds: [Int]
     let addedAt: Date
 
+    // MARK: - Watch Status
+
+    var isWatched: Bool
+
     // MARK: - Enhanced Fields (preserve movie data - fixes data loss)
 
     let overview: String
@@ -31,7 +35,7 @@ struct WatchlistItem: Codable, Identifiable, Hashable {
     // MARK: - Initialization
 
     /// Create watchlist item from Movie - preserves ALL data
-    init(from movie: Movie) {
+    init(from movie: Movie, isWatched: Bool = false) {
         self.id = movie.id
         self.title = movie.title
         self.posterPath = movie.posterPath
@@ -39,6 +43,7 @@ struct WatchlistItem: Codable, Identifiable, Hashable {
         self.voteAverage = movie.voteAverage
         self.genreIds = movie.genreIds
         self.addedAt = Date()
+        self.isWatched = isWatched
         // Enhanced fields - no more data loss!
         self.overview = movie.overview
         self.backdropPath = movie.backdropPath
@@ -57,6 +62,7 @@ struct WatchlistItem: Codable, Identifiable, Hashable {
         voteAverage: Double,
         genreIds: [Int],
         addedAt: Date,
+        isWatched: Bool = false,
         overview: String = "",
         backdropPath: String? = nil,
         voteCount: Int = 0,
@@ -71,6 +77,7 @@ struct WatchlistItem: Codable, Identifiable, Hashable {
         self.voteAverage = voteAverage
         self.genreIds = genreIds
         self.addedAt = addedAt
+        self.isWatched = isWatched
         self.overview = overview
         self.backdropPath = backdropPath
         self.voteCount = voteCount
@@ -93,6 +100,9 @@ struct WatchlistItem: Codable, Identifiable, Hashable {
         genreIds = try container.decode([Int].self, forKey: .genreIds)
         addedAt = try container.decode(Date.self, forKey: .addedAt)
 
+        // Watch status (default false for migration)
+        isWatched = try container.decodeIfPresent(Bool.self, forKey: .isWatched) ?? false
+
         // Gracefully handle missing enhanced fields (migration support)
         overview = try container.decodeIfPresent(String.self, forKey: .overview) ?? ""
         backdropPath = try container.decodeIfPresent(String.self, forKey: .backdropPath)
@@ -103,7 +113,7 @@ struct WatchlistItem: Codable, Identifiable, Hashable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, posterPath, releaseDate, voteAverage, genreIds, addedAt
+        case id, title, posterPath, releaseDate, voteAverage, genreIds, addedAt, isWatched
         case overview, backdropPath, voteCount, popularity, originalLanguage, originalTitle
     }
 

@@ -226,38 +226,66 @@ struct CompactMovieRow: View {
     let icon: String
     let movies: [Movie]
     let onMovieTap: (Movie) -> Void
+    let onSeeAll: (() -> Void)?
+
+    init(
+        title: String,
+        icon: String,
+        movies: [Movie],
+        onMovieTap: @escaping (Movie) -> Void,
+        onSeeAll: (() -> Void)? = nil
+    ) {
+        self.title = title
+        self.icon = icon
+        self.movies = movies
+        self.onMovieTap = onMovieTap
+        self.onSeeAll = onSeeAll
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
-            // Section header with icon
-            HStack(spacing: Spacing.sm) {
-                // Icon with gradient background
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.accentPrimary.opacity(0.3), .accentSecondary.opacity(0.3)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+            // Section header with icon - CLICKABLE
+            Button {
+                Haptics.shared.buttonTapped()
+                onSeeAll?()
+            } label: {
+                HStack(spacing: Spacing.sm) {
+                    // Icon with gradient background
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.accentPrimary.opacity(0.3), .accentSecondary.opacity(0.3)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .frame(width: 28, height: 28)
+                            .frame(width: 28, height: 28)
 
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.accentPrimary)
+                        Image(systemName: icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.accentPrimary)
+                    }
+
+                    Text(title)
+                        .font(.headline2)
+                        .foregroundColor(.textPrimary)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.textTertiary)
+
+                    Spacer()
+
+                    if onSeeAll != nil {
+                        Text("See All")
+                            .font(.labelMedium)
+                            .foregroundColor(.accentPrimary)
+                    }
                 }
-
-                Text(title)
-                    .font(.headline2)
-                    .foregroundColor(.textPrimary)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.textTertiary)
-
-                Spacer()
             }
+            .buttonStyle(.plain)
+            .disabled(onSeeAll == nil)
             .padding(.horizontal, Spacing.horizontal)
 
             // Horizontal scroll
@@ -286,19 +314,22 @@ struct FeaturedRow: View {
     let movies: [Movie]
     let onMovieTap: (Movie) -> Void
     let onTrailerTap: ((Movie) -> Void)?
+    let onSeeAll: (() -> Void)?
 
     init(
         title: String,
         subtitle: String? = nil,
         movies: [Movie],
         onMovieTap: @escaping (Movie) -> Void,
-        onTrailerTap: ((Movie) -> Void)? = nil
+        onTrailerTap: ((Movie) -> Void)? = nil,
+        onSeeAll: (() -> Void)? = nil
     ) {
         self.title = title
         self.subtitle = subtitle
         self.movies = movies
         self.onMovieTap = onMovieTap
         self.onTrailerTap = onTrailerTap
+        self.onSeeAll = onSeeAll
     }
 
     var body: some View {
@@ -307,7 +338,7 @@ struct FeaturedRow: View {
             PremiumSectionHeader(
                 title: title,
                 subtitle: subtitle,
-                onSeeAll: nil
+                onSeeAll: onSeeAll
             )
 
             // Horizontal scroll

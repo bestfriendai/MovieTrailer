@@ -397,6 +397,140 @@ actor TMDBService {
         return response.primaryTrailer
     }
 
+    // MARK: - Credits
+
+    /// Fetch credits (cast & crew) for a movie
+    func fetchCredits(for movieId: Int) async throws -> Credits {
+        try await request(
+            endpoint: .credits(movieId: movieId),
+            responseType: Credits.self
+        )
+    }
+
+    // MARK: - Reviews
+
+    /// Fetch reviews for a movie
+    func fetchReviews(for movieId: Int, page: Int = 1) async throws -> ReviewResponse {
+        try await request(
+            endpoint: .reviews(movieId: movieId, page: page),
+            responseType: ReviewResponse.self
+        )
+    }
+
+    // MARK: - Collections
+
+    /// Fetch a movie collection (franchise)
+    func fetchCollection(id: Int) async throws -> MovieCollection {
+        try await request(
+            endpoint: .collection(collectionId: id),
+            responseType: MovieCollection.self
+        )
+    }
+
+    // MARK: - Person
+
+    /// Fetch person details
+    func fetchPersonDetails(id: Int) async throws -> PersonDetails {
+        try await request(
+            endpoint: .personDetails(personId: id),
+            responseType: PersonDetails.self
+        )
+    }
+
+    /// Fetch full person details with movie credits and images
+    func fetchPersonDetailsFull(id: Int) async throws -> PersonDetails {
+        try await request(
+            endpoint: .personDetailsFull(personId: id, appendToResponse: TMDBEndpoint.PersonAppendOption.all),
+            responseType: PersonDetails.self
+        )
+    }
+
+    /// Fetch person's movie credits
+    func fetchPersonMovieCredits(id: Int) async throws -> PersonMovieCredits {
+        try await request(
+            endpoint: .personMovieCredits(personId: id),
+            responseType: PersonMovieCredits.self
+        )
+    }
+
+    // MARK: - Optimized Movie Details (Single Request)
+
+    /// Fetch movie details with all related data in one request
+    /// This reduces API calls from 5+ to just 1 using append_to_response
+    func fetchMovieDetailsFull(id: Int) async throws -> MovieDetailsFull {
+        try await request(
+            endpoint: .movieDetailsFull(id: id, appendToResponse: TMDBEndpoint.AppendOption.all),
+            responseType: MovieDetailsFull.self
+        )
+    }
+
+    /// Fetch movie details with essential data (videos, credits, watch providers)
+    func fetchMovieDetailsEssential(id: Int) async throws -> MovieDetailsFull {
+        try await request(
+            endpoint: .movieDetailsFull(id: id, appendToResponse: TMDBEndpoint.AppendOption.essential),
+            responseType: MovieDetailsFull.self
+        )
+    }
+
+    // MARK: - Discover
+
+    /// Discover movies with advanced filters
+    func discoverMovies(filters: DiscoverFilters) async throws -> MovieResponse {
+        try await request(
+            endpoint: .discover(filters: filters),
+            responseType: MovieResponse.self
+        )
+    }
+
+    /// Discover highly rated movies
+    func fetchHighlyRatedMovies(page: Int = 1) async throws -> MovieResponse {
+        var filters = DiscoverFilters.highlyRated
+        filters.page = page
+        return try await discoverMovies(filters: filters)
+    }
+
+    /// Discover hidden gems (good rating, lower popularity)
+    func fetchHiddenGems(page: Int = 1) async throws -> MovieResponse {
+        var filters = DiscoverFilters.hiddenGems
+        filters.page = page
+        return try await discoverMovies(filters: filters)
+    }
+
+    /// Discover recent top rated movies (last 2 years, high rating)
+    func fetchRecentTopRated(page: Int = 1) async throws -> MovieResponse {
+        var filters = DiscoverFilters.recentTopRated
+        filters.page = page
+        return try await discoverMovies(filters: filters)
+    }
+
+    /// Discover this year's best movies
+    func fetchThisYearsBest(page: Int = 1) async throws -> MovieResponse {
+        var filters = DiscoverFilters.thisYearsBest
+        filters.page = page
+        return try await discoverMovies(filters: filters)
+    }
+
+    /// Discover movies by genre
+    func fetchMoviesByGenre(_ genreId: Int, page: Int = 1) async throws -> MovieResponse {
+        var filters = DiscoverFilters()
+        filters.page = page
+        filters.genres = [genreId]
+        filters.sortBy = .popularityDesc
+        filters.voteCountMin = 50
+        return try await discoverMovies(filters: filters)
+    }
+
+    /// Discover movies from a specific decade
+    func fetchMoviesByDecade(_ decade: Int, page: Int = 1) async throws -> MovieResponse {
+        var filters = DiscoverFilters()
+        filters.page = page
+        filters.yearMin = decade
+        filters.yearMax = decade + 9
+        filters.sortBy = .popularityDesc
+        filters.voteCountMin = 100
+        return try await discoverMovies(filters: filters)
+    }
+
     // MARK: - Cache Management
 
     /// Clear all cached responses

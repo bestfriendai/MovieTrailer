@@ -18,10 +18,19 @@ struct WatchlistView: View {
     @State private var isGridView = false
 
     let onItemTap: (WatchlistItem) -> Void
+    let onBrowseMovies: () -> Void
+    let onDiscover: () -> Void
 
-    init(viewModel: WatchlistViewModel, onItemTap: @escaping (WatchlistItem) -> Void = { _ in }) {
+    init(
+        viewModel: WatchlistViewModel,
+        onItemTap: @escaping (WatchlistItem) -> Void = { _ in },
+        onBrowseMovies: @escaping () -> Void = {},
+        onDiscover: @escaping () -> Void = {}
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.onItemTap = onItemTap
+        self.onBrowseMovies = onBrowseMovies
+        self.onDiscover = onDiscover
     }
 
     var body: some View {
@@ -175,8 +184,23 @@ struct WatchlistView: View {
     }
 
     private var topGenre: String {
-        // This would calculate the most common genre
-        return "Action"
+        // Calculate the most common genre from watchlist items
+        let allGenreIds = viewModel.items.flatMap { $0.genreIds }
+        guard !allGenreIds.isEmpty else { return "None" }
+
+        // Count occurrences of each genre
+        var genreCounts: [Int: Int] = [:]
+        for genreId in allGenreIds {
+            genreCounts[genreId, default: 0] += 1
+        }
+
+        // Find the most common genre
+        if let topGenreId = genreCounts.max(by: { $0.value < $1.value })?.key,
+           let genre = Genre.genre(for: topGenreId) {
+            return genre.name
+        }
+
+        return "Mixed"
     }
 
     // MARK: - Collection Tabs
@@ -202,12 +226,12 @@ struct WatchlistView: View {
     }
 
     private func collectionCount(for collection: LibraryCollection) -> Int {
-        switch collection {
-        case .all: return viewModel.count
-        case .favorites: return viewModel.items.filter { $0.voteAverage >= 8.0 }.count
-        case .toWatch: return viewModel.count
-        case .watched: return 0
-        }
+        viewModel.count(for: collection)
+    }
+
+    /// Get items for the current selected collection
+    private var filteredItems: [WatchlistItem] {
+        viewModel.items(for: selectedCollection)
     }
 
     // MARK: - Grid Content
@@ -221,13 +245,18 @@ struct WatchlistView: View {
             ],
             spacing: Spacing.md
         ) {
-            ForEach(viewModel.items) { item in
+            ForEach(filteredItems) { item in
                 LibraryGridCard(
                     item: item,
                     onTap: { onItemTap(item) },
                     onDelete: {
                         withAnimation(AppTheme.Animation.smooth) {
                             viewModel.removeItem(item)
+                        }
+                    },
+                    onToggleWatched: {
+                        withAnimation(AppTheme.Animation.smooth) {
+                            viewModel.toggleWatched(item)
                         }
                     }
                 )
@@ -240,7 +269,7 @@ struct WatchlistView: View {
 
     private var listContent: some View {
         LazyVStack(spacing: Spacing.sm) {
-            ForEach(viewModel.items) { item in
+            ForEach(filteredItems) { item in
                 LibraryListRow(
                     item: item,
                     onTap: { onItemTap(item) },
@@ -252,6 +281,11 @@ struct WatchlistView: View {
                     onStartLiveActivity: {
                         Task {
                             await viewModel.startLiveActivity(for: item)
+                        }
+                    },
+                    onToggleWatched: {
+                        withAnimation(AppTheme.Animation.smooth) {
+                            viewModel.toggleWatched(item)
                         }
                     }
                 )
@@ -337,17 +371,22 @@ struct WatchlistView: View {
                     .foregroundColor(.textTertiary)
 
                 HStack(spacing: Spacing.sm) {
-                    suggestionButton(title: "Browse Movies", icon: "film.fill")
-                    suggestionButton(title: "Discover", icon: "rectangle.stack.fill")
+                    suggestionButton(title: "Browse Movies", icon: "film.fill") {
+                        onBrowseMovies()
+                    }
+                    suggestionButton(title: "Discover", icon: "rectangle.stack.fill") {
+                        onDiscover()
+                    }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func suggestionButton(title: String, icon: String) -> some View {
+    private func suggestionButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button {
             Haptics.shared.buttonTapped()
+            action()
         } label: {
             HStack(spacing: Spacing.xs) {
                 Image(systemName: icon)
@@ -436,6 +475,7 @@ struct LibraryGridCard: View {
     let item: WatchlistItem
     let onTap: () -> Void
     let onDelete: () -> Void
+    let onToggleWatched: () -> Void
 
     @State private var isPressed = false
 
@@ -457,25 +497,34 @@ struct LibraryGridCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
                     .overlay(
                         RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                            .stroke(Color.glassBorder, lineWidth: 0.5)
+                            .stroke(item.isWatched ? Color.green.opacity(0.5) : Color.glassBorder, lineWidth: item.isWatched ? 2 : 0.5)
                     )
 
-                // Rating badge
-                if item.voteAverage > 0 {
-                    HStack(spacing: 2) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 8))
-                            .foregroundColor(.ratingStar)
-                        Text(item.formattedRating)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
+                // Rating badge & watched indicator
+                VStack(spacing: 4) {
+                    if item.isWatched {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.green)
+                            .background(Circle().fill(.ultraThinMaterial))
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .padding(6)
+
+                    if item.voteAverage > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.ratingStar)
+                            Text(item.formattedRating)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                    }
                 }
+                .padding(6)
             }
             .scaleEffect(isPressed ? 0.96 : 1.0)
             .animation(AppTheme.Animation.quick, value: isPressed)
@@ -487,6 +536,14 @@ struct LibraryGridCard: View {
                 .onEnded { _ in isPressed = false }
         )
         .contextMenu {
+            Button {
+                Haptics.shared.selectionChanged()
+                onToggleWatched()
+            } label: {
+                Label(item.isWatched ? "Mark as Unwatched" : "Mark as Watched",
+                      systemImage: item.isWatched ? "eye.slash" : "checkmark.circle")
+            }
+
             Button(role: .destructive) {
                 Haptics.shared.lightImpact()
                 onDelete()
@@ -504,6 +561,7 @@ struct LibraryListRow: View {
     let onTap: () -> Void
     let onDelete: () -> Void
     let onStartLiveActivity: () -> Void
+    let onToggleWatched: () -> Void
 
     @State private var isPressed = false
 
@@ -513,23 +571,49 @@ struct LibraryListRow: View {
             onTap()
         }) {
             HStack(spacing: Spacing.md) {
-                // Poster
-                KFImage(item.posterURL)
-                    .placeholder {
-                        Rectangle()
-                            .fill(Color.surfaceSecondary)
+                // Poster with watched indicator
+                ZStack(alignment: .bottomTrailing) {
+                    KFImage(item.posterURL)
+                        .placeholder {
+                            Rectangle()
+                                .fill(Color.surfaceSecondary)
+                        }
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 70, height: 105)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
+                                .stroke(item.isWatched ? Color.green.opacity(0.5) : Color.clear, lineWidth: 2)
+                        )
+
+                    if item.isWatched {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.green)
+                            .background(Circle().fill(.ultraThinMaterial))
+                            .offset(x: 4, y: 4)
                     }
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 70, height: 105)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
+                }
 
                 // Info
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text(item.title)
-                        .font(.headline3)
-                        .foregroundColor(.textPrimary)
-                        .lineLimit(2)
+                    HStack {
+                        Text(item.title)
+                            .font(.headline3)
+                            .foregroundColor(.textPrimary)
+                            .lineLimit(2)
+
+                        if item.isWatched {
+                            Text("Watched")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.green)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.green.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
+                    }
 
                     if let year = item.releaseYear {
                         Text(year)
@@ -559,6 +643,20 @@ struct LibraryListRow: View {
 
                 // Action buttons
                 VStack(spacing: Spacing.sm) {
+                    // Watched toggle button
+                    Button {
+                        Haptics.shared.selectionChanged()
+                        onToggleWatched()
+                    } label: {
+                        Image(systemName: item.isWatched ? "eye.slash" : "checkmark.circle")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(item.isWatched ? .orange : .green)
+                            .frame(width: 36, height: 36)
+                            .background((item.isWatched ? Color.orange : Color.green).opacity(0.15))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+
                     // Notification button
                     Button {
                         Haptics.shared.buttonTapped()
@@ -579,7 +677,7 @@ struct LibraryListRow: View {
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                    .stroke(Color.glassBorder, lineWidth: 0.5)
+                    .stroke(item.isWatched ? Color.green.opacity(0.3) : Color.glassBorder, lineWidth: item.isWatched ? 1 : 0.5)
             )
             .scaleEffect(isPressed ? 0.98 : 1.0)
             .animation(AppTheme.Animation.quick, value: isPressed)
@@ -597,6 +695,16 @@ struct LibraryListRow: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                Haptics.shared.selectionChanged()
+                onToggleWatched()
+            } label: {
+                Label(item.isWatched ? "Unwatched" : "Watched",
+                      systemImage: item.isWatched ? "eye.slash" : "checkmark.circle")
+            }
+            .tint(item.isWatched ? .orange : .green)
         }
     }
 }

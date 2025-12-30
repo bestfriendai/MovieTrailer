@@ -21,8 +21,11 @@ struct MovieSwipeView: View {
     let onMovieTap: (Movie) -> Void
     let onPlayTrailer: ((Movie) -> Void)?
 
-    // Available filter options
-    private let years = ["2025", "2024", "2023", "2022", "2021", "2020"]
+    // Available filter options - dynamic years
+    private var years: [String] {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        return (0..<6).map { String(currentYear - $0) }
+    }
     private let ratingOptions: [Double] = [0, 5, 6, 7, 8]
 
     // MARK: - Initialization
@@ -136,38 +139,42 @@ struct MovieSwipeView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Discover")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(.textPrimary)
 
                 Text("\(viewModel.remainingCount) movies to explore")
                     .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(.textSecondary)
             }
 
             Spacer()
 
-            // Stats button
+            // Stats button with glass effect
             Button {
                 Haptics.shared.lightImpact()
                 viewModel.showStats = true
             } label: {
                 Image(systemName: "chart.bar.fill")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.white)
-                    .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(0.1))
+                    .foregroundColor(.textPrimary)
+                    .frame(width: 48, height: 48)
+                    .background(.ultraThinMaterial)
                     .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
+        .padding(.horizontal, Spacing.horizontal)
+        .padding(.top, Spacing.sm)
     }
 
     // MARK: - Filter Chips
 
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            HStack(spacing: Spacing.sm) {
                 // All filters button
                 FilterChip(
                     title: "Filters",
@@ -186,7 +193,7 @@ struct MovieSwipeView: View {
                         isSelected: selectedGenre?.id == genre.id
                     ) {
                         Haptics.shared.selectionChanged()
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(AppTheme.Animation.snappy) {
                             if selectedGenre?.id == genre.id {
                                 selectedGenre = nil
                             } else {
@@ -200,47 +207,65 @@ struct MovieSwipeView: View {
                 if selectedGenre != nil || selectedYear != nil || minRating > 0 {
                     Button {
                         Haptics.shared.lightImpact()
-                        withAnimation {
+                        withAnimation(AppTheme.Animation.snappy) {
                             selectedGenre = nil
                             selectedYear = nil
                             minRating = 0
                         }
                     } label: {
-                        Text("Clear")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                            Text("Clear")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .foregroundColor(.accentPrimary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                     }
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.horizontal)
         }
     }
 
     // MARK: - Card Stack
 
+    private var upcomingMovies: [Movie] {
+        // Get the next 3 movies for the stack effect
+        let startIndex = viewModel.currentIndex + 1
+        let endIndex = min(startIndex + 3, viewModel.movieQueue.count)
+        guard startIndex < viewModel.movieQueue.count else { return [] }
+        return Array(viewModel.movieQueue[startIndex..<endIndex])
+    }
+
     private var cardStackView: some View {
         ZStack {
-            // Background card (next)
-            if let nextMovie = viewModel.nextMovie {
-                movieCard(for: nextMovie, isBackground: true)
-                    .scaleEffect(0.92)
-                    .offset(y: -10)
-                    .opacity(0.6)
+            // Background cards for depth effect (show up to 2 behind)
+            ForEach(Array(upcomingMovies.prefix(2).reversed().enumerated()), id: \.element.id) { index, movie in
+                let depth = upcomingMovies.prefix(2).count - 1 - index
+                movieCard(for: movie, isTopCard: false)
+                    .scaleEffect(0.88 - (CGFloat(depth) * 0.04))
+                    .offset(y: CGFloat(depth + 1) * -12)
+                    .opacity(0.4 - (Double(depth) * 0.15))
+                    .blur(radius: CGFloat(depth) * 0.5)
                     .allowsHitTesting(false)
             }
 
             // Current card
             if let movie = filteredCurrentMovie {
-                movieCard(for: movie, isBackground: false)
+                movieCard(for: movie, isTopCard: true)
                     .id(movie.id)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.9).combined(with: .opacity),
+                        removal: .identity
+                    ))
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 20)
     }
 
-    private func movieCard(for movie: Movie, isBackground: Bool) -> some View {
+    private func movieCard(for movie: Movie, isTopCard: Bool) -> some View {
         SwipeCard(
             movie: movie,
             onSwipe: { direction in
@@ -248,7 +273,8 @@ struct MovieSwipeView: View {
             },
             onTap: {
                 onMovieTap(movie)
-            }
+            },
+            isTopCard: isTopCard
         )
     }
 
@@ -272,13 +298,11 @@ struct MovieSwipeView: View {
     // MARK: - Action Buttons
 
     private var actionButtonsView: some View {
-        HStack(spacing: 20) {
-            // Undo
-            ActionButton(
+        HStack(spacing: 0) {
+            // Undo - small secondary button
+            SmallActionButton(
                 icon: "arrow.uturn.backward",
-                size: 50,
-                color: .white.opacity(0.2),
-                iconColor: .white.opacity(viewModel.currentIndex > 0 ? 1 : 0.3)
+                isEnabled: viewModel.currentIndex > 0
             ) {
                 guard viewModel.currentIndex > 0 else { return }
                 Haptics.shared.lightImpact()
@@ -287,53 +311,51 @@ struct MovieSwipeView: View {
 
             Spacer()
 
-            // Skip (X)
-            ActionButton(
-                icon: "xmark",
-                size: 64,
-                color: Color(red: 0.9, green: 0.3, blue: 0.3).opacity(0.2),
-                iconColor: Color(red: 0.9, green: 0.3, blue: 0.3)
-            ) {
-                Haptics.shared.mediumImpact()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                    viewModel.skip()
+            // Main action buttons
+            HStack(spacing: 16) {
+                // Skip (X)
+                MainActionButton(
+                    icon: "xmark",
+                    color: .swipeSkip,
+                    size: 60
+                ) {
+                    Haptics.shared.mediumImpact()
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        viewModel.skip()
+                    }
                 }
-            }
 
-            // Save for later
-            ActionButton(
-                icon: "bookmark.fill",
-                size: 56,
-                color: Color.cyan.opacity(0.2),
-                iconColor: .cyan
-            ) {
-                Haptics.shared.mediumImpact()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                    viewModel.watchLater()
+                // Save for later - elevated center
+                MainActionButton(
+                    icon: "bookmark.fill",
+                    color: .swipeWatchLater,
+                    size: 52
+                ) {
+                    Haptics.shared.mediumImpact()
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        viewModel.watchLater()
+                    }
                 }
-            }
 
-            // Love
-            ActionButton(
-                icon: "heart.fill",
-                size: 64,
-                color: Color(red: 0.3, green: 0.8, blue: 0.4).opacity(0.2),
-                iconColor: Color(red: 0.3, green: 0.8, blue: 0.4)
-            ) {
-                Haptics.shared.success()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                    viewModel.like()
+                // Love
+                MainActionButton(
+                    icon: "heart.fill",
+                    color: .swipeLove,
+                    size: 60
+                ) {
+                    Haptics.shared.success()
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        viewModel.like()
+                    }
                 }
             }
 
             Spacer()
 
-            // Play trailer
-            ActionButton(
+            // Play trailer - small secondary button
+            SmallActionButton(
                 icon: "play.fill",
-                size: 50,
-                color: .white.opacity(0.2),
-                iconColor: .white
+                isEnabled: filteredCurrentMovie != nil
             ) {
                 Haptics.shared.lightImpact()
                 if let movie = filteredCurrentMovie {
@@ -341,7 +363,7 @@ struct MovieSwipeView: View {
                 }
             }
         }
-        .padding(.horizontal, 32)
+        .padding(.horizontal, 24)
     }
 
     // MARK: - Filter Sheet
@@ -624,20 +646,68 @@ struct MovieSwipeView: View {
 
     private func matchOverlay(movie: Movie) -> some View {
         ZStack {
-            Color.black.opacity(0.9)
-                .ignoresSafeArea()
+            // Animated gradient background
+            LinearGradient(
+                colors: [
+                    Color.swipeLove.opacity(0.3),
+                    Color.black.opacity(0.95),
+                    Color.black
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                Text("IT'S A MATCH!")
-                    .font(.system(size: 36, weight: .black))
-                    .foregroundColor(.green)
+            // Floating particles effect
+            GeometryReader { geometry in
+                ForEach(0..<20, id: \.self) { i in
+                    Circle()
+                        .fill(Color.swipeLove.opacity(Double.random(in: 0.2...0.5)))
+                        .frame(width: CGFloat.random(in: 4...12))
+                        .position(
+                            x: CGFloat.random(in: 0...geometry.size.width),
+                            y: CGFloat.random(in: 0...geometry.size.height)
+                        )
+                        .blur(radius: 2)
+                }
+            }
 
-                Text("You loved \(movie.title)")
-                    .font(.headline)
-                    .foregroundColor(.white.opacity(0.8))
-                    .multilineTextAlignment(.center)
+            VStack(spacing: 28) {
+                // Animated heart icon
+                ZStack {
+                    // Pulsing outer ring
+                    Circle()
+                        .stroke(Color.swipeLove.opacity(0.3), lineWidth: 4)
+                        .frame(width: 100, height: 100)
 
-                // Movie poster
+                    Circle()
+                        .fill(Color.swipeLove.opacity(0.15))
+                        .frame(width: 80, height: 80)
+
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundColor(.swipeLove)
+                }
+                .shadow(color: .swipeLove.opacity(0.6), radius: 30)
+
+                // Title
+                VStack(spacing: 8) {
+                    Text("IT'S A MATCH!")
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.white, .swipeLove],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+
+                    Text("You loved")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.6))
+                }
+
+                // Movie poster with glow
                 AsyncImage(url: movie.posterURL) { image in
                     image
                         .resizable()
@@ -645,44 +715,73 @@ struct MovieSwipeView: View {
                 } placeholder: {
                     Rectangle().fill(Color.gray.opacity(0.3))
                 }
-                .frame(width: 160, height: 240)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .green.opacity(0.5), radius: 20)
+                .frame(width: 140, height: 210)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.swipeLove.opacity(0.5), lineWidth: 2)
+                )
+                .shadow(color: .swipeLove.opacity(0.6), radius: 30, y: 10)
 
-                HStack(spacing: 16) {
+                // Movie title
+                Text(movie.title)
+                    .font(.title3.bold())
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .padding(.horizontal, 20)
+
+                // Action buttons
+                VStack(spacing: 12) {
                     Button {
                         onPlayTrailer?(movie)
                         viewModel.dismissMatch()
                     } label: {
-                        HStack {
+                        HStack(spacing: 10) {
                             Image(systemName: "play.fill")
+                                .font(.system(size: 14, weight: .bold))
                             Text("Watch Trailer")
+                                .font(.system(size: 16, weight: .bold))
                         }
-                        .font(.headline)
                         .foregroundColor(.black)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                        .background(Color.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [.white, .white.opacity(0.9)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
                         .clipShape(Capsule())
+                        .shadow(color: .white.opacity(0.3), radius: 12, y: 4)
                     }
+                    .padding(.horizontal, 40)
 
                     Button {
                         viewModel.dismissMatch()
                     } label: {
-                        Text("Continue")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 14)
-                            .background(Color.white.opacity(0.15))
-                            .clipShape(Capsule())
+                        Text("Keep Swiping")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.vertical, 12)
                     }
                 }
+                .padding(.top, 8)
             }
-            .padding(32)
+            .padding(24)
         }
+        .transition(.opacity.combined(with: .scale(scale: 0.9)))
         .onTapGesture {
             viewModel.dismissMatch()
+        }
+        .onAppear {
+            // Auto-dismiss after 4 seconds if user doesn't interact
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                withAnimation(AppTheme.Animation.smooth) {
+                    viewModel.dismissMatch()
+                }
+            }
         }
     }
 }
@@ -701,31 +800,153 @@ struct FilterChip: View {
             HStack(spacing: 6) {
                 if let icon = icon {
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 14, weight: .semibold))
                 }
                 Text(title)
-                    .font(.subheadline.weight(.medium))
+                    .font(.system(size: 14, weight: .semibold))
 
                 if hasActiveFilter {
                     Circle()
-                        .fill(Color.cyan)
+                        .fill(Color.accentPrimary)
                         .frame(width: 6, height: 6)
                 }
             }
-            .foregroundColor(isSelected ? .black : .white)
-            .padding(.horizontal, 14)
+            .foregroundColor(isSelected ? .black : .textPrimary)
+            .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(
-                Capsule()
-                    .fill(isSelected ? Color.white : Color.white.opacity(0.1))
+                Group {
+                    if isSelected {
+                        Capsule()
+                            .fill(Color.accentPrimary)
+                    } else {
+                        Capsule()
+                            .fill(.ultraThinMaterial)
+                    }
+                }
             )
             .overlay(
                 Capsule()
-                    .stroke(Color.white.opacity(0.2), lineWidth: isSelected ? 0 : 1)
+                    .stroke(
+                        isSelected ? Color.clear : Color.glassBorder,
+                        lineWidth: 1
+                    )
             )
+            .shadow(color: isSelected ? Color.accentPrimary.opacity(0.3) : .clear, radius: 8, x: 0, y: 4)
         }
+        .buttonStyle(.plain)
+        .scaleEffect(isSelected ? 1.02 : 1.0)
+        .animation(AppTheme.Animation.snappy, value: isSelected)
     }
 }
+
+// MARK: - Main Action Button (Skip, Save, Love)
+
+struct MainActionButton: View {
+    let icon: String
+    let color: Color
+    let size: CGFloat
+    let action: () -> Void
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                // Outer glow ring
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: size + 16, height: size + 16)
+                    .blur(radius: 12)
+
+                // Main circle with gradient
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                color.opacity(0.25),
+                                color.opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: size, height: size)
+
+                // Glass overlay
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: size, height: size)
+                    .opacity(0.4)
+
+                // Border with gradient
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [color.opacity(0.6), color.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2.5
+                    )
+                    .frame(width: size, height: size)
+
+                // Icon
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.4, weight: .bold))
+                    .foregroundColor(color)
+            }
+            .shadow(color: color.opacity(0.5), radius: 16, x: 0, y: 6)
+            .scaleEffect(isPressed ? 0.85 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+// MARK: - Small Action Button (Undo, Play)
+
+struct SmallActionButton: View {
+    let icon: String
+    var isEnabled: Bool = true
+    let action: () -> Void
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 44, height: 44)
+
+                Circle()
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white.opacity(isEnabled ? 0.9 : 0.3))
+            }
+            .scaleEffect(isPressed ? 0.85 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+// MARK: - Legacy Action Button (for compatibility)
 
 struct ActionButton: View {
     let icon: String
@@ -734,21 +955,48 @@ struct ActionButton: View {
     let iconColor: Color
     let action: () -> Void
 
+    @State private var isPressed = false
+
     var body: some View {
         Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: size * 0.35, weight: .semibold))
-                .foregroundColor(iconColor)
-                .frame(width: size, height: size)
-                .background(
-                    Circle()
-                        .fill(color)
-                )
-                .overlay(
-                    Circle()
-                        .stroke(iconColor.opacity(0.3), lineWidth: 2)
-                )
+            ZStack {
+                Circle()
+                    .fill(iconColor.opacity(0.15))
+                    .frame(width: size + 8, height: size + 8)
+                    .blur(radius: 8)
+
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: size, height: size)
+
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [iconColor.opacity(0.2), iconColor.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: size, height: size)
+
+                Circle()
+                    .stroke(iconColor.opacity(0.3), lineWidth: 2)
+                    .frame(width: size, height: size)
+
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.38, weight: .bold))
+                    .foregroundColor(iconColor)
+            }
+            .shadow(color: iconColor.opacity(0.4), radius: 12, x: 0, y: 4)
+            .scaleEffect(isPressed ? 0.9 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
     }
 }
 

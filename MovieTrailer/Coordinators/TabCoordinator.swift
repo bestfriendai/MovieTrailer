@@ -243,6 +243,12 @@ extension TabCoordinator {
             onItemTap: { item in
                 let movie = item.toMovie()
                 self.showMovieDetail(movie)
+            },
+            onBrowseMovies: {
+                self.selectTab(.home)
+            },
+            onDiscover: {
+                self.selectTab(.swipe)
             }
         )
     }

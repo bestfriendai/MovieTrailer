@@ -8,6 +8,77 @@
 import SwiftUI
 import Kingfisher
 
+// MARK: - Streaming Provider (Embedded)
+
+/// Represents a major streaming service with its TMDB provider ID
+enum StreamingProvider: Int, CaseIterable, Identifiable {
+    case netflix = 8
+    case amazonPrime = 9
+    case disneyPlus = 337
+    case hboMax = 384
+    case hulu = 15
+    case appleTVPlus = 350
+    case paramount = 531
+    case peacock = 386
+
+    var id: Int { rawValue }
+
+    var shortName: String {
+        switch self {
+        case .netflix: return "Netflix"
+        case .amazonPrime: return "Prime"
+        case .disneyPlus: return "Disney+"
+        case .hboMax: return "Max"
+        case .hulu: return "Hulu"
+        case .appleTVPlus: return "Apple TV+"
+        case .paramount: return "Paramount+"
+        case .peacock: return "Peacock"
+        }
+    }
+
+    var logoPath: String {
+        switch self {
+        case .netflix: return "/t2yyOv40HZeVlLjYsCsPHnWLk4W.jpg"
+        case .amazonPrime: return "/emthp39XA2YScoYL1p0sdbAH2WA.jpg"
+        case .disneyPlus: return "/7rwgEs15tFwyR9NPQ5vpzxTj19Q.jpg"
+        case .hboMax: return "/aS2zvJWn9mwiCOeaaCkIh4wleZS.jpg"
+        case .hulu: return "/zxrVdFjIjLqkfnwyghnfywTn3Lh.jpg"
+        case .appleTVPlus: return "/6uhKBfmtzFqOcLousHwZuzcrScK.jpg"
+        case .paramount: return "/xbhHHa1YgtpwhC8lb1NQ3ACVcLd.jpg"
+        case .peacock: return "/8VCV78prwd9QzZnEm0ReO6bERDa.jpg"
+        }
+    }
+
+    var logoURL: URL? {
+        URL(string: "https://image.tmdb.org/t/p/w92\(logoPath)")
+    }
+
+    var brandColor: Color {
+        switch self {
+        case .netflix: return Color(red: 0.89, green: 0.12, blue: 0.15)
+        case .amazonPrime: return Color(red: 0.0, green: 0.66, blue: 0.88)
+        case .disneyPlus: return Color(red: 0.07, green: 0.22, blue: 0.56)
+        case .hboMax: return Color(red: 0.0, green: 0.14, blue: 0.53)
+        case .hulu: return Color(red: 0.11, green: 0.81, blue: 0.49)
+        case .appleTVPlus: return Color.gray
+        case .paramount: return Color(red: 0.0, green: 0.34, blue: 0.73)
+        case .peacock: return Color(red: 0.0, green: 0.0, blue: 0.0)
+        }
+    }
+
+    static var featured: [StreamingProvider] {
+        [.netflix, .disneyPlus, .amazonPrime, .hboMax, .appleTVPlus, .hulu, .peacock, .paramount]
+    }
+
+    var searchQuery: String {
+        switch self {
+        case .hboMax: return "HBO"
+        case .amazonPrime: return "Amazon"
+        default: return shortName
+        }
+    }
+}
+
 struct SearchView: View {
 
     @StateObject private var viewModel: SearchViewModel
@@ -149,8 +220,9 @@ struct SearchView: View {
                             icon: "flame.fill",
                             color: .orange
                         ) {
-                            viewModel.searchQuery = "popular 2024"
-                            viewModel.search()
+                            Task {
+                                await viewModel.fetchTrending()
+                            }
                         }
 
                         QuickActionCard(
@@ -159,8 +231,9 @@ struct SearchView: View {
                             icon: "sparkles",
                             color: .cyan
                         ) {
-                            viewModel.searchQuery = "2024"
-                            viewModel.search()
+                            Task {
+                                await viewModel.fetchNewReleases()
+                            }
                         }
                     }
 
@@ -171,8 +244,9 @@ struct SearchView: View {
                             icon: "star.fill",
                             color: .yellow
                         ) {
-                            viewModel.searchQuery = "top rated"
-                            viewModel.search()
+                            Task {
+                                await viewModel.fetchTopRated()
+                            }
                         }
 
                         QuickActionCard(
@@ -181,8 +255,9 @@ struct SearchView: View {
                             icon: "calendar",
                             color: .green
                         ) {
-                            viewModel.searchQuery = "upcoming 2025"
-                            viewModel.search()
+                            Task {
+                                await viewModel.fetchUpcoming()
+                            }
                         }
                     }
                 }
@@ -198,26 +273,39 @@ struct SearchView: View {
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        ForEach(["Dune", "Oppenheimer", "Barbie", "Avatar", "Marvel", "Star Wars", "Batman"], id: \.self) { term in
-                            Button {
-                                viewModel.searchQuery = term
-                                viewModel.search()
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "magnifyingglass")
-                                        .font(.system(size: 12))
-                                    Text(term)
-                                        .font(.system(size: 14, weight: .medium))
+                        if viewModel.isLoadingTrending {
+                            ForEach(0..<5, id: \.self) { _ in
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(Color.white.opacity(0.1))
+                                    .frame(width: 80, height: 36)
+                                    .shimmer(isActive: true)
+                            }
+                        } else {
+                            ForEach(viewModel.trendingSearches, id: \.self) { term in
+                                Button {
+                                    viewModel.searchQuery = term
+                                    viewModel.search()
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "flame.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.orange)
+                                        Text(term)
+                                            .font(.system(size: 14, weight: .medium))
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(Color.white.opacity(0.1))
+                                    .clipShape(Capsule())
                                 }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(Color.white.opacity(0.1))
-                                .clipShape(Capsule())
                             }
                         }
                     }
                     .padding(.horizontal, 20)
+                }
+                .task {
+                    await viewModel.loadTrendingSearches()
                 }
             }
 
@@ -234,10 +322,11 @@ struct SearchView: View {
                     GridItem(.flexible(), spacing: 10),
                     GridItem(.flexible(), spacing: 10)
                 ], spacing: 12) {
-                    ForEach(Genre.all.prefix(12)) { genre in
+                    ForEach(Genre.all) { genre in
                         GenreCard(genre: genre) {
-                            viewModel.searchQuery = genre.name
-                            viewModel.search()
+                            Task {
+                                await viewModel.fetchByGenre(genre.id, genreName: genre.name)
+                            }
                         }
                     }
                 }
@@ -257,37 +346,11 @@ struct SearchView: View {
                     GridItem(.flexible(), spacing: 10),
                     GridItem(.flexible(), spacing: 10)
                 ], spacing: 10) {
-                    StreamingCard(name: "Netflix", color: Color(red: 0.89, green: 0.12, blue: 0.15)) {
-                        viewModel.searchQuery = "Netflix"
-                        viewModel.search()
-                    }
-                    StreamingCard(name: "Disney+", color: Color(red: 0.07, green: 0.22, blue: 0.56)) {
-                        viewModel.searchQuery = "Disney"
-                        viewModel.search()
-                    }
-                    StreamingCard(name: "Prime", color: Color(red: 0.0, green: 0.66, blue: 0.88)) {
-                        viewModel.searchQuery = "Amazon"
-                        viewModel.search()
-                    }
-                    StreamingCard(name: "Max", color: Color(red: 0.0, green: 0.14, blue: 0.53)) {
-                        viewModel.searchQuery = "HBO"
-                        viewModel.search()
-                    }
-                    StreamingCard(name: "Apple TV+", color: Color.gray) {
-                        viewModel.searchQuery = "Apple"
-                        viewModel.search()
-                    }
-                    StreamingCard(name: "Hulu", color: Color(red: 0.11, green: 0.81, blue: 0.49)) {
-                        viewModel.searchQuery = "Hulu"
-                        viewModel.search()
-                    }
-                    StreamingCard(name: "Peacock", color: Color(red: 0.0, green: 0.0, blue: 0.0)) {
-                        viewModel.searchQuery = "Peacock"
-                        viewModel.search()
-                    }
-                    StreamingCard(name: "Paramount+", color: Color(red: 0.0, green: 0.34, blue: 0.73)) {
-                        viewModel.searchQuery = "Paramount"
-                        viewModel.search()
+                    ForEach(StreamingProvider.featured) { provider in
+                        StreamingProviderCard(provider: provider) {
+                            viewModel.searchQuery = provider.searchQuery
+                            viewModel.search()
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -422,7 +485,53 @@ struct GenreCard: View {
     }
 }
 
-// MARK: - Streaming Card
+// MARK: - Streaming Provider Card with Logo
+
+struct StreamingProviderCard: View {
+    let provider: StreamingProvider
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                // Provider Logo
+                KFImage(provider.logoURL)
+                    .placeholder {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(provider.brandColor)
+                            .overlay(
+                                Text(provider.shortName.prefix(1))
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.white)
+                            )
+                    }
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                // Provider Name
+                Text(provider.shortName)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.8))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
+        }
+    }
+}
+
+// MARK: - Streaming Card (Legacy)
 
 struct StreamingCard: View {
     let name: String

@@ -73,6 +73,12 @@ struct WatchlistCoordinatorView: View {
                 ),
                 onItemTap: { item in
                     coordinator.showMovieDetail(for: item)
+                },
+                onBrowseMovies: {
+                    // Tab switching handled by parent TabCoordinator
+                },
+                onDiscover: {
+                    // Tab switching handled by parent TabCoordinator
                 }
             )
         }

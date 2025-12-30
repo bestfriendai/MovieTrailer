@@ -102,6 +102,27 @@ enum StreamingService: String, CaseIterable, Identifiable, Codable {
         default: return false
         }
     }
+
+    /// Alias for color property (for UI consistency)
+    var brandColor: Color { color }
+
+    /// SF Symbol icon name for the service
+    var iconName: String {
+        switch self {
+        case .netflix: return "play.rectangle.fill"
+        case .disneyPlus: return "sparkles"
+        case .amazonPrime: return "shippingbox.fill"
+        case .hboMax: return "play.tv.fill"
+        case .appleTVPlus: return "apple.logo"
+        case .hulu: return "leaf.fill"
+        case .peacock: return "bird.fill"
+        case .paramount: return "mountain.2.fill"
+        case .tubi: return "play.circle.fill"
+        case .plutoTV: return "antenna.radiowaves.left.and.right"
+        case .crunchyroll: return "star.fill"
+        case .showtime: return "film.fill"
+        }
+    }
 }
 
 // MARK: - Streaming Badge View

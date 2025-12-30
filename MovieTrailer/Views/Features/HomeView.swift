@@ -38,6 +38,183 @@ enum QuickFilter: String, CaseIterable {
     }
 }
 
+// MARK: - Category Movies View
+
+struct CategoryMoviesView: View {
+
+    let category: MovieCategory
+    let movies: [Movie]
+    let onMovieTap: (Movie) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private let columns = [
+        GridItem(.flexible(), spacing: Spacing.md),
+        GridItem(.flexible(), spacing: Spacing.md),
+        GridItem(.flexible(), spacing: Spacing.md)
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: Spacing.lg) {
+                // Header with category info
+                categoryHeader
+
+                // Movies grid
+                LazyVGrid(columns: columns, spacing: Spacing.lg) {
+                    ForEach(movies) { movie in
+                        CategoryMovieCard(movie: movie) {
+                            onMovieTap(movie)
+                        }
+                    }
+                }
+                .padding(.horizontal, Spacing.horizontal)
+
+                // Bottom padding
+                Spacer()
+                    .frame(height: 100)
+            }
+        }
+        .background(Color.appBackground)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(category.rawValue)
+                    .font(.headline)
+                    .foregroundColor(.textPrimary)
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.white.opacity(0.6), .white.opacity(0.1))
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Category Header
+
+    private var categoryHeader: some View {
+        HStack(spacing: Spacing.md) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [category.color.opacity(0.4), category.color.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 50, height: 50)
+
+                Image(systemName: category.icon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(category.color)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(category.rawValue)
+                    .font(.title2.bold())
+                    .foregroundColor(.textPrimary)
+
+                Text("\(movies.count) movies")
+                    .font(.subheadline)
+                    .foregroundColor(.textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, Spacing.horizontal)
+        .padding(.top, Spacing.md)
+    }
+}
+
+// MARK: - Category Movie Card
+
+struct CategoryMovieCard: View {
+
+    let movie: Movie
+    let onTap: () -> Void
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: {
+            Haptics.shared.cardTapped()
+            onTap()
+        }) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                // Poster
+                ZStack(alignment: .topTrailing) {
+                    KFImage(movie.posterURL)
+                        .placeholder {
+                            Rectangle()
+                                .fill(Color.surfaceSecondary)
+                                .shimmer(isActive: true)
+                        }
+                        .resizable()
+                        .aspectRatio(2/3, contentMode: .fill)
+                        .frame(maxWidth: .infinity)
+                        .clipped()
+
+                    // Rating badge
+                    if movie.voteAverage > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.ratingStar)
+                            Text(movie.formattedRating)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .padding(6)
+                    }
+                }
+                .aspectRatio(2/3, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.glassBorder, lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 4)
+
+                // Title
+                Text(movie.title)
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(.textPrimary)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Year
+                if let year = movie.releaseYear {
+                    Text(year)
+                        .font(.caption2)
+                        .foregroundColor(.textTertiary)
+                }
+            }
+            .scaleEffect(isPressed ? 0.96 : 1.0)
+            .animation(AppTheme.Animation.quick, value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
 struct HomeView: View {
 
     // MARK: - Properties
@@ -45,11 +222,17 @@ struct HomeView: View {
     @StateObject private var viewModel: HomeViewModel
     @State private var showingFilters = false
     @State private var scrollOffset: CGFloat = 0
+    @State private var selectedCategory: MovieCategory?
+    @State private var showingCategoryView = false
 
     let onMovieTap: (Movie) -> Void
     let onPlayTrailer: (Movie) -> Void
 
-    private let years = ["2025", "2024", "2023", "2022", "2021"]
+    // Dynamic years - current year and 4 previous years
+    private var years: [String] {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        return (0..<5).map { String(currentYear - $0) }
+    }
 
     // MARK: - Initialization
 
@@ -132,7 +315,8 @@ struct HomeView: View {
                         Top10Row(
                             title: viewModel.hasActiveFilters ? "Top Matches" : "Top 10 Movies Today",
                             movies: Array(viewModel.filteredTopRatedMovies.prefix(10)),
-                            onMovieTap: onMovieTap
+                            onMovieTap: onMovieTap,
+                            onSeeAll: { showCategory(.topRated) }
                         )
                     }
 
@@ -143,7 +327,8 @@ struct HomeView: View {
                             subtitle: viewModel.hasActiveFilters ? "Based on your filters" : "What everyone's watching",
                             movies: Array(viewModel.filteredTrendingMovies.prefix(10)),
                             onMovieTap: onMovieTap,
-                            onTrailerTap: onPlayTrailer
+                            onTrailerTap: onPlayTrailer,
+                            onSeeAll: { showCategory(.trending) }
                         )
                     }
 
@@ -158,7 +343,8 @@ struct HomeView: View {
                             title: viewModel.hasActiveFilters ? "Popular Matches" : "Popular Movies",
                             subtitle: viewModel.hasActiveFilters ? "Matching your preferences" : "Fan favorites",
                             movies: viewModel.filteredPopularMovies,
-                            onMovieTap: onMovieTap
+                            onMovieTap: onMovieTap,
+                            onSeeAll: { showCategory(.popular) }
                         )
                     }
 
@@ -168,7 +354,8 @@ struct HomeView: View {
                             title: "New Releases",
                             subtitle: "Fresh arrivals",
                             movies: viewModel.filteredNewReleases,
-                            onMovieTap: onMovieTap
+                            onMovieTap: onMovieTap,
+                            onSeeAll: { showCategory(.newReleases) }
                         )
                     }
 
@@ -198,6 +385,50 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingFilters) {
             filterSheet
+        }
+        .sheet(isPresented: $showingCategoryView) {
+            if let category = selectedCategory {
+                NavigationStack {
+                    CategoryMoviesView(
+                        category: category,
+                        movies: moviesForCategory(category),
+                        onMovieTap: { movie in
+                            showingCategoryView = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                onMovieTap(movie)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Category Navigation
+
+    private func showCategory(_ category: MovieCategory) {
+        Haptics.shared.buttonTapped()
+        selectedCategory = category
+        showingCategoryView = true
+    }
+
+    private func moviesForCategory(_ category: MovieCategory) -> [Movie] {
+        switch category {
+        case .trending: return viewModel.trendingMovies
+        case .popular: return viewModel.popularMovies
+        case .topRated: return viewModel.topRatedMovies
+        case .nowPlaying: return viewModel.nowPlayingMovies
+        case .newReleases: return viewModel.newReleases
+        case .action: return viewModel.actionMovies
+        case .comedy: return viewModel.comedyMovies
+        case .drama: return viewModel.dramaMovies
+        case .horror: return viewModel.horrorMovies
+        case .sciFi: return viewModel.sciFiMovies
+        case .all: return viewModel.popularMovies
+        case .animation: return viewModel.popularMovies.filter { $0.genreIds.contains(16) }
+        case .romance: return viewModel.popularMovies.filter { $0.genreIds.contains(10749) }
+        case .thriller: return viewModel.popularMovies.filter { $0.genreIds.contains(53) }
+        case .documentary: return viewModel.popularMovies.filter { $0.genreIds.contains(99) }
         }
     }
 
@@ -238,7 +469,8 @@ struct HomeView: View {
                 QuickFilterPill(
                     title: "Tonight",
                     icon: "moon.stars.fill",
-                    isSelected: viewModel.selectedQuickFilter == .tonight
+                    isSelected: viewModel.selectedQuickFilter == .tonight,
+                    isLoading: viewModel.isLoadingQuickFilter
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         viewModel.setQuickFilter(.tonight)
@@ -248,7 +480,8 @@ struct HomeView: View {
                 QuickFilterPill(
                     title: "Date Night",
                     icon: "heart.fill",
-                    isSelected: viewModel.selectedQuickFilter == .dateNight
+                    isSelected: viewModel.selectedQuickFilter == .dateNight,
+                    isLoading: viewModel.isLoadingQuickFilter
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         viewModel.setQuickFilter(.dateNight)
@@ -258,7 +491,8 @@ struct HomeView: View {
                 QuickFilterPill(
                     title: "Family",
                     icon: "figure.2.and.child.holdinghands",
-                    isSelected: viewModel.selectedQuickFilter == .family
+                    isSelected: viewModel.selectedQuickFilter == .family,
+                    isLoading: viewModel.isLoadingQuickFilter
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         viewModel.setQuickFilter(.family)
@@ -268,7 +502,8 @@ struct HomeView: View {
                 QuickFilterPill(
                     title: "New",
                     icon: "star.fill",
-                    isSelected: viewModel.selectedQuickFilter == .newReleases
+                    isSelected: viewModel.selectedQuickFilter == .newReleases,
+                    isLoading: viewModel.isLoadingQuickFilter
                 ) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         viewModel.setQuickFilter(.newReleases)
@@ -439,64 +674,70 @@ struct HomeView: View {
 
     private var theaterSection: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
-            // Header with theater icon
-            HStack(spacing: Spacing.sm) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.orange.opacity(0.3), .red.opacity(0.3)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+            // Header with theater icon - CLICKABLE
+            Button {
+                showCategory(.nowPlaying)
+            } label: {
+                HStack(spacing: Spacing.sm) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.orange.opacity(0.3), .red.opacity(0.3)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .frame(width: 32, height: 32)
+                            .frame(width: 32, height: 32)
 
-                    Image(systemName: "popcorn.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.orange)
+                        Image(systemName: "popcorn.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.orange)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("In Theaters Now")
+                            .font(.headline1)
+                            .foregroundColor(.textPrimary)
+
+                        Text("Now showing near you")
+                            .font(.labelMedium)
+                            .foregroundColor(.textTertiary)
+                    }
+
+                    Spacer()
+
+                    // See All text
+                    HStack(spacing: 4) {
+                        Text("See All")
+                            .font(.labelMedium)
+                            .foregroundColor(.accentPrimary)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.accentPrimary)
+                    }
                 }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("In Theaters Now")
-                        .font(.headline1)
-                        .foregroundColor(.textPrimary)
-
-                    Text("Now showing near you")
-                        .font(.labelMedium)
-                        .foregroundColor(.textTertiary)
-                }
-
-                Spacer()
-
-                // Location badge
-                HStack(spacing: 4) {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 10))
-                    Text("Nearby")
-                        .font(.pillSmall)
-                }
-                .foregroundColor(.accentPrimary)
-                .padding(.horizontal, Spacing.sm)
-                .padding(.vertical, Spacing.xxs)
-                .background(Color.accentPrimary.opacity(0.15))
-                .clipShape(Capsule())
             }
+            .buttonStyle(.plain)
             .padding(.horizontal, Spacing.horizontal)
 
-            // Theater movie cards
+            // Theater movie cards - HORIZONTAL SCROLL
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Spacing.md) {
-                    ForEach(viewModel.nowPlayingMovies.prefix(10)) { movie in
+                    ForEach(viewModel.nowPlayingMovies.prefix(15)) { movie in
                         TheaterMovieCard(
                             movie: movie,
                             onTap: { onMovieTap(movie) },
                             onTrailerTap: { onPlayTrailer(movie) }
                         )
+                        .frame(width: 220)
                     }
                 }
                 .padding(.horizontal, Spacing.horizontal)
+                .padding(.vertical, 8)
             }
+            .frame(height: 360)
         }
     }
 
@@ -510,7 +751,8 @@ struct HomeView: View {
                 title: "Action & Adventure",
                 icon: "bolt.fill",
                 movies: viewModel.actionMovies,
-                onMovieTap: onMovieTap
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.action) }
             )
         }
 
@@ -520,7 +762,8 @@ struct HomeView: View {
                 title: "Comedy",
                 icon: "face.smiling.fill",
                 movies: viewModel.comedyMovies,
-                onMovieTap: onMovieTap
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.comedy) }
             )
         }
 
@@ -530,7 +773,8 @@ struct HomeView: View {
                 title: "Drama",
                 icon: "theatermasks.fill",
                 movies: viewModel.dramaMovies,
-                onMovieTap: onMovieTap
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.drama) }
             )
         }
 
@@ -540,7 +784,8 @@ struct HomeView: View {
                 title: "Sci-Fi & Fantasy",
                 icon: "sparkles",
                 movies: viewModel.sciFiMovies,
-                onMovieTap: onMovieTap
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.sciFi) }
             )
         }
 
@@ -550,7 +795,8 @@ struct HomeView: View {
                 title: "Horror & Thriller",
                 icon: "moon.fill",
                 movies: viewModel.horrorMovies,
-                onMovieTap: onMovieTap
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.horror) }
             )
         }
     }
@@ -651,6 +897,7 @@ struct QuickFilterPill: View {
     let title: String
     let icon: String
     let isSelected: Bool
+    var isLoading: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -659,8 +906,14 @@ struct QuickFilterPill: View {
             action()
         }) {
             HStack(spacing: Spacing.xs) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .medium))
+                if isLoading && isSelected {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                        .tint(.textInverted)
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .medium))
+                }
                 Text(title)
                     .font(.labelMedium)
             }
@@ -675,6 +928,7 @@ struct QuickFilterPill: View {
             )
         }
         .buttonStyle(ScaleButtonStyle())
+        .disabled(isLoading)
     }
 }
 
@@ -780,9 +1034,10 @@ struct TheaterMovieCard: View {
                         }
                         .buttonStyle(ScaleButtonStyle())
 
-                        // Showtimes button
+                        // Showtimes button - opens Fandango search
                         Button {
                             Haptics.shared.buttonTapped()
+                            openShowtimes(for: movie)
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "ticket.fill")
@@ -811,12 +1066,29 @@ struct TheaterMovieCard: View {
             .scaleEffect(isPressed ? 0.97 : 1.0)
             .animation(AppTheme.Animation.quick, value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(TheaterCardButtonStyle(isPressed: $isPressed))
+    }
+
+    // Open showtimes search for this movie
+    private func openShowtimes(for movie: Movie) {
+        // URL encode the movie title for search
+        let encodedTitle = movie.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? movie.title
+        // Open Fandango search for showtimes
+        if let url = URL(string: "https://www.fandango.com/search?q=\(encodedTitle)&mode=movies") {
+            UIApplication.shared.open(url)
+        }
+    }
+}
+
+// Custom button style that doesn't block scrolling
+struct TheaterCardButtonStyle: ButtonStyle {
+    @Binding var isPressed: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .onChange(of: configuration.isPressed) { _, newValue in
+                isPressed = newValue
+            }
     }
 }
 
@@ -875,6 +1147,8 @@ final class HomeViewModel: ObservableObject {
     @Published var selectedGenre: Genre?
     @Published var selectedYear: String?
     @Published var minRating: Double = 0
+    @Published var quickFilteredMovies: [Movie] = []
+    @Published var isLoadingQuickFilter = false
 
     // Legacy compatibility
     var isLoading: Bool { viewState.isLoading }
@@ -902,28 +1176,62 @@ final class HomeViewModel: ObservableObject {
     }
 
     var filteredFeaturedMovies: [Movie] {
+        // When quick filter is active, use fetched movies
+        if selectedQuickFilter != .none && !quickFilteredMovies.isEmpty {
+            return Array(quickFilteredMovies.prefix(5))
+        }
         let filtered = filterMovies(featuredMovies)
         return filtered.isEmpty && hasActiveFilters ? filterMovies(trendingMovies).prefix(5).map { $0 } : filtered
     }
 
     var filteredTopRatedMovies: [Movie] {
-        filterMovies(topRatedMovies)
+        // When quick filter is active, show top rated from fetched movies
+        if selectedQuickFilter != .none && !quickFilteredMovies.isEmpty {
+            return quickFilteredMovies.sorted { $0.voteAverage > $1.voteAverage }.prefix(10).map { $0 }
+        }
+        return filterMovies(topRatedMovies)
     }
 
     var filteredTrendingMovies: [Movie] {
-        filterMovies(trendingMovies)
+        // When quick filter is active, use fetched movies
+        if selectedQuickFilter != .none && !quickFilteredMovies.isEmpty {
+            return quickFilteredMovies
+        }
+        return filterMovies(trendingMovies)
     }
 
     var filteredNowPlayingMovies: [Movie] {
-        filterMovies(nowPlayingMovies)
+        // When quick filter is active, filter from fetched movies
+        if selectedQuickFilter != .none && !quickFilteredMovies.isEmpty {
+            return quickFilteredMovies.filter { movie in
+                guard let dateString = movie.releaseDate else { return false }
+                let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd"
+                return dateString >= formatter.string(from: threeMonthsAgo)
+            }
+        }
+        return filterMovies(nowPlayingMovies)
     }
 
     var filteredPopularMovies: [Movie] {
-        filterMovies(popularMovies)
+        // When quick filter is active, use fetched movies sorted by popularity
+        if selectedQuickFilter != .none && !quickFilteredMovies.isEmpty {
+            return quickFilteredMovies.sorted { $0.popularity > $1.popularity }
+        }
+        return filterMovies(popularMovies)
     }
 
     var filteredNewReleases: [Movie] {
-        filterMovies(newReleases)
+        // When quick filter is active, filter recent from fetched movies
+        if selectedQuickFilter != .none && !quickFilteredMovies.isEmpty {
+            let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            let cutoffDate = formatter.string(from: threeMonthsAgo)
+            return quickFilteredMovies.filter { ($0.releaseDate ?? "") >= cutoffDate }
+        }
+        return filterMovies(newReleases)
     }
 
     var activeFilterDescription: String {
@@ -1012,8 +1320,11 @@ final class HomeViewModel: ObservableObject {
             await offlineCache.cacheMovies(nowPlayingMovies, category: .nowPlaying)
         }
 
-        // Filter by genres
+        // Filter by genres (initial from existing data)
         filterByGenres()
+
+        // Load genre-specific movies from TMDB discover API
+        await loadGenreMovies()
 
         // Prefetch images for featured movies
         prefetchImages()
@@ -1084,13 +1395,57 @@ final class HomeViewModel: ObservableObject {
         selectedGenre = nil
         selectedYear = nil
         minRating = 0
+        quickFilteredMovies = []
     }
 
     func setQuickFilter(_ filter: QuickFilter) {
         if selectedQuickFilter == filter {
             selectedQuickFilter = .none
+            quickFilteredMovies = []
         } else {
             selectedQuickFilter = filter
+            // Fetch movies matching the filter from TMDB
+            Task {
+                await loadQuickFilterMovies(for: filter)
+            }
+        }
+    }
+
+    /// Fetch movies from TMDB that match the quick filter
+    private func loadQuickFilterMovies(for filter: QuickFilter) async {
+        guard filter != .none else {
+            quickFilteredMovies = []
+            return
+        }
+
+        isLoadingQuickFilter = true
+
+        do {
+            var allMovies: [Movie] = []
+
+            if filter == .newReleases {
+                // Fetch recent releases
+                let response = try await tmdbService.fetchRecentMovies(page: 1)
+                allMovies = response.results
+            } else {
+                // Fetch movies for each genre in the filter
+                let genreIds = filter.genreIds
+                for genreId in genreIds.prefix(2) { // Limit to 2 genres to avoid too many requests
+                    let response = try await tmdbService.fetchMoviesByGenre(genreId, page: 1)
+                    allMovies.append(contentsOf: response.results)
+                }
+                // Remove duplicates and sort by popularity
+                let uniqueMovies = Array(Set(allMovies))
+                allMovies = uniqueMovies.sorted { $0.popularity > $1.popularity }
+            }
+
+            quickFilteredMovies = Array(allMovies.prefix(30))
+            isLoadingQuickFilter = false
+        } catch {
+            #if DEBUG
+            print("⚠️ Failed to load quick filter movies: \(error)")
+            #endif
+            isLoadingQuickFilter = false
         }
     }
 
@@ -1102,9 +1457,15 @@ final class HomeViewModel: ObservableObject {
         // Apply quick filter
         if selectedQuickFilter != .none {
             if selectedQuickFilter == .newReleases {
+                // Dynamic: filter movies released in the last 3 months
+                let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd"
+                let cutoffDate = dateFormatter.string(from: threeMonthsAgo)
+
                 filtered = filtered.filter { movie in
                     guard let dateString = movie.releaseDate else { return false }
-                    return dateString >= "2024-09"
+                    return dateString >= cutoffDate
                 }
             } else {
                 let genreIds = selectedQuickFilter.genreIds
@@ -1167,13 +1528,15 @@ final class HomeViewModel: ObservableObject {
 
     private func loadTopRatedWithError() async -> Error? {
         do {
-            let response = try await tmdbService.fetchNowPlaying(page: 1)
-            topRatedMovies = Array(response.results.sorted { $0.popularity > $1.popularity }.prefix(10))
+            // Use recent top rated (last 2 years) for fresh content
+            let response = try await tmdbService.fetchRecentTopRated(page: 1)
+            topRatedMovies = Array(response.results.prefix(10))
             return nil
         } catch {
             do {
+                // Fallback to trending sorted by rating if recent top-rated fails
                 let response = try await tmdbService.fetchTrending(page: 1)
-                topRatedMovies = Array(response.results.prefix(10))
+                topRatedMovies = Array(response.results.sorted { $0.voteAverage > $1.voteAverage }.prefix(10))
                 return nil
             } catch {
                 return error
@@ -1193,6 +1556,7 @@ final class HomeViewModel: ObservableObject {
     }
 
     private func filterByGenres() {
+        // Use already-fetched movies as initial source, but also fetch genre-specific content
         let allMovies = trendingMovies + nowPlayingMovies + popularMovies
 
         let recentMovies = allMovies.filter { movie in
@@ -1203,11 +1567,35 @@ final class HomeViewModel: ObservableObject {
 
         let uniqueMovies = Array(Set(recentMovies))
 
+        // Initial population from existing data
         actionMovies = uniqueMovies.filter { $0.genreIds.contains(28) }
         comedyMovies = uniqueMovies.filter { $0.genreIds.contains(35) }
         dramaMovies = uniqueMovies.filter { $0.genreIds.contains(18) }
         horrorMovies = uniqueMovies.filter { $0.genreIds.contains(27) || $0.genreIds.contains(53) }
         sciFiMovies = uniqueMovies.filter { $0.genreIds.contains(878) || $0.genreIds.contains(14) }
+    }
+
+    /// Fetch genre-specific movies from TMDB discover API
+    private func loadGenreMovies() async {
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.loadGenre(id: 28, into: \.actionMovies) }
+            group.addTask { await self.loadGenre(id: 35, into: \.comedyMovies) }
+            group.addTask { await self.loadGenre(id: 18, into: \.dramaMovies) }
+            group.addTask { await self.loadGenre(id: 27, into: \.horrorMovies) }
+            group.addTask { await self.loadGenre(id: 878, into: \.sciFiMovies) }
+        }
+    }
+
+    private func loadGenre(id: Int, into keyPath: ReferenceWritableKeyPath<HomeViewModel, [Movie]>) async {
+        do {
+            let response = try await tmdbService.fetchMoviesByGenre(id, page: 1)
+            self[keyPath: keyPath] = Array(response.results.prefix(15))
+        } catch {
+            // Keep existing filtered data on error
+            #if DEBUG
+            print("⚠️ HomeViewModel: Failed to load genre \(id): \(error)")
+            #endif
+        }
     }
 
     // MARK: - Image Prefetching

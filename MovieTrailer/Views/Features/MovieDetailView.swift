@@ -41,18 +41,26 @@ struct MovieDetailView: View {
                     // Overview
                     overviewSection
                     
-                    // Trailers (if available)
-                    if !trailers.isEmpty {
+                    // Trailers section with loading state
+                    if isLoadingTrailers {
+                        trailerLoadingSection
+                    } else if !trailers.isEmpty {
                         trailerSection
+                    } else {
+                        noTrailersSection
                     }
 
-                    // Watch Providers (streaming platforms)
-                    WatchProvidersView(providers: watchProviders) { link in
-                        if let link = link, let url = URL(string: link) {
-                            UIApplication.shared.open(url)
+                    // Watch Providers (streaming platforms) with loading state
+                    if isLoadingProviders {
+                        providersLoadingSection
+                    } else {
+                        WatchProvidersView(providers: watchProviders) { link in
+                            if let link = link, let url = URL(string: link) {
+                                UIApplication.shared.open(url)
+                            }
                         }
+                        .padding(.horizontal, -20) // Offset parent padding for full-width
                     }
-                    .padding(.horizontal, -20) // Offset parent padding for full-width
 
                     // Genres
                     genresSection
@@ -72,29 +80,43 @@ struct MovieDetailView: View {
                 TrailerPlayerView(
                     video: trailer,
                     onClose: {
+                        #if DEBUG
                         print("🎬 MovieDetailView: User closed trailer player")
+                        #endif
                         showingTrailer = false
                         selectedTrailer = nil
                     }
                 )
+                #if DEBUG
                 .onAppear {
                     print("🎬 MovieDetailView: fullScreenCover presenting trailer: \(trailer.name)")
                 }
+                #endif
             } else {
-                Color.red.ignoresSafeArea()
+                // Fallback error state - should not happen in normal use
+                Color.black.opacity(0.9).ignoresSafeArea()
                     .overlay(
-                        Text("Error: No trailer selected")
-                            .foregroundColor(.white)
+                        VStack(spacing: 16) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 40))
+                                .foregroundColor(.yellow)
+                            Text("Unable to load trailer")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            Button("Dismiss") {
+                                showingTrailer = false
+                            }
+                            .foregroundColor(.blue)
+                        }
                     )
-                    .onAppear {
-                        print("⚠️ MovieDetailView: fullScreenCover triggered but selectedTrailer is nil!")
-                    }
             }
         }
+        #if DEBUG
         .onChange(of: showingTrailer) { newValue in
             print("🎬 MovieDetailView: showingTrailer changed to: \(newValue)")
             print("🎬 MovieDetailView: selectedTrailer is: \(selectedTrailer?.name ?? "nil")")
         }
+        #endif
         .task {
             await loadTrailers()
             await loadWatchProviders()
@@ -179,7 +201,7 @@ struct MovieDetailView: View {
                 }
 
                 // Vote count
-                Text("(\(movie.voteCount) reviews)")
+                Text(movie.voteCount > 0 ? "(\(movie.voteCount.formatted()) reviews)" : "Not yet rated")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.5))
             }
@@ -292,6 +314,74 @@ struct MovieDetailView: View {
         .padding(.top, 8)
     }
     
+    // MARK: - Loading Sections
+
+    private var trailerLoadingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Trailers")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            HStack(spacing: 12) {
+                ForEach(0..<2, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.white.opacity(0.1))
+                        .frame(width: 200, height: 112)
+                        .overlay(
+                            ProgressView()
+                                .tint(.white.opacity(0.5))
+                        )
+                }
+            }
+        }
+    }
+
+    private var providersLoadingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Where to Watch")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            HStack(spacing: 12) {
+                ForEach(0..<4, id: \.self) { _ in
+                    Circle()
+                        .fill(Color.white.opacity(0.1))
+                        .frame(width: 50, height: 50)
+                }
+                Spacer()
+            }
+            .padding()
+            .background(Color.white.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .padding(.horizontal, -20)
+    }
+
+    private var noTrailersSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Trailers")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            HStack(spacing: 12) {
+                Image(systemName: "film.stack")
+                    .font(.title2)
+                    .foregroundColor(.white.opacity(0.4))
+
+                Text("No trailers available yet")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.5))
+
+                Spacer()
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white.opacity(0.05))
+            )
+        }
+    }
+
     // MARK: - Trailer Section
 
     private var trailerSection: some View {
@@ -303,12 +393,13 @@ struct MovieDetailView: View {
             if trailers.count == 1 {
                 // Single trailer - large button
                 Button {
+                    #if DEBUG
                     print("🎬 MovieDetailView: User tapped single trailer button")
                     print("   Trailer: \(trailers[0].name)")
                     print("   Video key: \(trailers[0].key)")
+                    #endif
                     selectedTrailer = trailers[0]
                     showingTrailer = true
-                    print("   showingTrailer set to: \(showingTrailer)")
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "play.circle.fill")
@@ -343,12 +434,11 @@ struct MovieDetailView: View {
                             TrailerCardView(
                                 trailer: trailer,
                                 onTap: {
-                                    print("🎬 MovieDetailView: User tapped trailer card")
-                                    print("   Trailer: \(trailer.name)")
-                                    print("   Video key: \(trailer.key)")
+                                    #if DEBUG
+                                    print("🎬 MovieDetailView: User tapped trailer card - \(trailer.name)")
+                                    #endif
                                     selectedTrailer = trailer
                                     showingTrailer = true
-                                    print("   showingTrailer set to: \(showingTrailer)")
                                 }
                             )
                         }
@@ -361,7 +451,9 @@ struct MovieDetailView: View {
     // MARK: - Helper Methods
     
     private func loadTrailers() async {
+        #if DEBUG
         print("🎬 MovieDetailView: Starting to load trailers for movie ID: \(movie.id)")
+        #endif
         isLoadingTrailers = true
         defer { isLoadingTrailers = false }
 
@@ -369,13 +461,14 @@ struct MovieDetailView: View {
             let videoResponse = try await tmdbService.fetchVideos(for: movie.id)
             await MainActor.run {
                 trailers = videoResponse.allTrailers
+                #if DEBUG
                 print("🎬 MovieDetailView: Successfully loaded \(trailers.count) trailers")
-                for (index, trailer) in trailers.enumerated() {
-                    print("   Trailer \(index + 1): \(trailer.name) - Key: \(trailer.key) - Site: \(trailer.site)")
-                }
+                #endif
             }
         } catch {
+            #if DEBUG
             print("⚠️ MovieDetailView: Failed to load trailers: \(error)")
+            #endif
             // Silently fail - trailers are optional
         }
     }
@@ -439,6 +532,8 @@ private struct TrailerCardView: View {
             }
         }
         .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel("Watch \(trailer.name)")
+        .accessibilityHint("Opens video player")
     }
 }
 
