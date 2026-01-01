@@ -9,6 +9,11 @@
 import Foundation
 import Combine
 
+struct RecommendationReason: Hashable {
+    let icon: String
+    let text: String
+}
+
 @MainActor
 final class MovieSwipeViewModel: ObservableObject {
 

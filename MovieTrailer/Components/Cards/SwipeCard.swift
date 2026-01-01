@@ -14,10 +14,24 @@ struct SwipeCard: View {
     // MARK: - Properties
 
     let movie: Movie
-    let recommendationReason: RecommendationReason? = nil
+    let recommendationReason: RecommendationReason?
     let onSwipe: (SwipeDirection) -> Void
     let onTap: () -> Void
     var isTopCard: Bool = true
+
+    init(
+        movie: Movie,
+        recommendationReason: RecommendationReason? = nil,
+        onSwipe: @escaping (SwipeDirection) -> Void,
+        onTap: @escaping () -> Void,
+        isTopCard: Bool = true
+    ) {
+        self.movie = movie
+        self.recommendationReason = recommendationReason
+        self.onSwipe = onSwipe
+        self.onTap = onTap
+        self.isTopCard = isTopCard
+    }
 
     @State private var offset: CGSize = .zero
     @State private var rotation: Double = 0

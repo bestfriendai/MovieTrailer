@@ -619,22 +619,22 @@ struct MovieSwipeView: View {
                 Circle()
                     .fill(Color.surfaceSecondary)
                     .frame(width: 60, height: 60)
-                    .shimmer(isActive: true, delay: 0.1)
+                    .shimmer(isActive: true)
 
                 Circle()
                     .fill(Color.surfaceSecondary)
                     .frame(width: 52, height: 52)
-                    .shimmer(isActive: true, delay: 0.2)
+                    .shimmer(isActive: true)
 
                 Circle()
                     .fill(Color.surfaceSecondary)
                     .frame(width: 60, height: 60)
-                    .shimmer(isActive: true, delay: 0.3)
+                    .shimmer(isActive: true)
 
                 Circle()
                     .fill(Color.surfaceSecondary)
                     .frame(width: 46, height: 46)
-                    .shimmer(isActive: true, delay: 0.4)
+                    .shimmer(isActive: true)
             }
         }
         .padding(.horizontal, 20)
