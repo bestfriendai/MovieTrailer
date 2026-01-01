@@ -16,6 +16,8 @@ struct WatchlistView: View {
     @State private var showingShareSheet = false
     @State private var selectedCollection: LibraryCollection = .all
     @State private var isGridView = false
+    @State private var isSelecting = false
+    @State private var selectedItemIds: Set<Int> = []
 
     let onItemTap: (WatchlistItem) -> Void
     let onBrowseMovies: () -> Void
@@ -61,8 +63,25 @@ struct WatchlistView: View {
                             .foregroundColor(.textPrimary)
                     }
 
-                    // More options
+                    // Selection mode
                     if !viewModel.isEmpty {
+                        Button {
+                            Haptics.shared.selectionChanged()
+                            withAnimation(AppTheme.Animation.smooth) {
+                                isSelecting.toggle()
+                                if !isSelecting {
+                                    selectedItemIds.removeAll()
+                                }
+                            }
+                        } label: {
+                            Image(systemName: isSelecting ? "checkmark.circle.fill" : "checkmark.circle")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(isSelecting ? .accentPrimary : .textPrimary)
+                        }
+                    }
+
+                    // More options
+                    if !viewModel.isEmpty && !isSelecting {
                         Menu {
                             sortMenu
                             Divider()
@@ -79,6 +98,11 @@ struct WatchlistView: View {
         .sheet(isPresented: $showingShareSheet) {
             if let image = viewModel.shareImage {
                 ShareSheet(items: [image])
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if isSelecting {
+                selectionActionBar
             }
         }
     }
@@ -217,6 +241,9 @@ struct WatchlistView: View {
                         Haptics.shared.selectionChanged()
                         withAnimation(AppTheme.Animation.smooth) {
                             selectedCollection = collection
+                            if isSelecting {
+                                selectedItemIds.removeAll()
+                            }
                         }
                     }
                 }
@@ -248,6 +275,9 @@ struct WatchlistView: View {
             ForEach(filteredItems) { item in
                 LibraryGridCard(
                     item: item,
+                    isSelecting: isSelecting,
+                    isSelected: selectedItemIds.contains(item.id),
+                    onSelect: { toggleSelection(for: item) },
                     onTap: { onItemTap(item) },
                     onDelete: {
                         withAnimation(AppTheme.Animation.smooth) {
@@ -272,6 +302,9 @@ struct WatchlistView: View {
             ForEach(filteredItems) { item in
                 LibraryListRow(
                     item: item,
+                    isSelecting: isSelecting,
+                    isSelected: selectedItemIds.contains(item.id),
+                    onSelect: { toggleSelection(for: item) },
                     onTap: { onItemTap(item) },
                     onDelete: {
                         withAnimation(AppTheme.Animation.smooth) {
@@ -292,6 +325,92 @@ struct WatchlistView: View {
             }
         }
         .padding(.horizontal, Spacing.horizontal)
+    }
+
+    private var selectedItems: [WatchlistItem] {
+        viewModel.items.filter { selectedItemIds.contains($0.id) }
+    }
+
+    private func toggleSelection(for item: WatchlistItem) {
+        if selectedItemIds.contains(item.id) {
+            selectedItemIds.remove(item.id)
+        } else {
+            selectedItemIds.insert(item.id)
+        }
+    }
+
+    private func exitSelectionMode() {
+        withAnimation(AppTheme.Animation.smooth) {
+            isSelecting = false
+            selectedItemIds.removeAll()
+        }
+    }
+
+    private func applyWatchedStatus(_ watched: Bool) {
+        for item in selectedItems where item.isWatched != watched {
+            viewModel.toggleWatched(item)
+        }
+        exitSelectionMode()
+    }
+
+    private func removeSelected() {
+        for item in selectedItems {
+            viewModel.removeItem(item)
+        }
+        exitSelectionMode()
+    }
+
+    private var selectionActionBar: some View {
+        VStack(spacing: Spacing.sm) {
+            HStack {
+                Text("\(selectedItemIds.count) selected")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                Button("Done") {
+                    Haptics.shared.selectionChanged()
+                    exitSelectionMode()
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.accentPrimary)
+            }
+
+            HStack(spacing: Spacing.sm) {
+                Button {
+                    Haptics.shared.selectionChanged()
+                    applyWatchedStatus(true)
+                } label: {
+                    Label("Watched", systemImage: "checkmark.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+
+                Button {
+                    Haptics.shared.selectionChanged()
+                    applyWatchedStatus(false)
+                } label: {
+                    Label("Unwatched", systemImage: "eye.slash")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
+
+                Button(role: .destructive) {
+                    Haptics.shared.lightImpact()
+                    removeSelected()
+                } label: {
+                    Label("Remove", systemImage: "trash")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(.horizontal, Spacing.horizontal)
+        .padding(.vertical, Spacing.md)
+        .background(.ultraThinMaterial)
     }
 
     // MARK: - Sort Menu
@@ -441,6 +560,9 @@ struct CollectionTabButton: View {
 
 struct LibraryGridCard: View {
     let item: WatchlistItem
+    let isSelecting: Bool
+    let isSelected: Bool
+    let onSelect: () -> Void
     let onTap: () -> Void
     let onDelete: () -> Void
     let onToggleWatched: () -> Void
@@ -450,7 +572,11 @@ struct LibraryGridCard: View {
     var body: some View {
         Button(action: {
             Haptics.shared.cardTapped()
-            onTap()
+            if isSelecting {
+                onSelect()
+            } else {
+                onTap()
+            }
         }) {
             ZStack(alignment: .topTrailing) {
                 // Poster
@@ -498,25 +624,37 @@ struct LibraryGridCard: View {
             .animation(AppTheme.Animation.quick, value: isPressed)
         }
         .buttonStyle(.plain)
+        .overlay(alignment: .topLeading) {
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(.accentPrimary)
+                    .padding(6)
+                    .background(Circle().fill(.ultraThinMaterial))
+                    .padding(6)
+            }
+        }
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in isPressed = true }
                 .onEnded { _ in isPressed = false }
         )
         .contextMenu {
-            Button {
-                Haptics.shared.selectionChanged()
-                onToggleWatched()
-            } label: {
-                Label(item.isWatched ? "Mark as Unwatched" : "Mark as Watched",
-                      systemImage: item.isWatched ? "eye.slash" : "checkmark.circle")
-            }
+            if !isSelecting {
+                Button {
+                    Haptics.shared.selectionChanged()
+                    onToggleWatched()
+                } label: {
+                    Label(item.isWatched ? "Mark as Unwatched" : "Mark as Watched",
+                          systemImage: item.isWatched ? "eye.slash" : "checkmark.circle")
+                }
 
-            Button(role: .destructive) {
-                Haptics.shared.lightImpact()
-                onDelete()
-            } label: {
-                Label("Remove", systemImage: "trash")
+                Button(role: .destructive) {
+                    Haptics.shared.lightImpact()
+                    onDelete()
+                } label: {
+                    Label("Remove", systemImage: "trash")
+                }
             }
         }
     }
@@ -526,6 +664,9 @@ struct LibraryGridCard: View {
 
 struct LibraryListRow: View {
     let item: WatchlistItem
+    let isSelecting: Bool
+    let isSelected: Bool
+    let onSelect: () -> Void
     let onTap: () -> Void
     let onDelete: () -> Void
     let onStartLiveActivity: () -> Void
@@ -536,9 +677,19 @@ struct LibraryListRow: View {
     var body: some View {
         Button(action: {
             Haptics.shared.cardTapped()
-            onTap()
+            if isSelecting {
+                onSelect()
+            } else {
+                onTap()
+            }
         }) {
             HStack(spacing: Spacing.md) {
+                if isSelecting {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(isSelected ? .accentPrimary : .textTertiary)
+                }
+
                 // Poster with watched indicator
                 ZStack(alignment: .bottomTrailing) {
                     KFImage(item.posterURL)
@@ -609,35 +760,37 @@ struct LibraryListRow: View {
 
                 Spacer()
 
-                // Action buttons
-                VStack(spacing: Spacing.sm) {
-                    // Watched toggle button
-                    Button {
-                        Haptics.shared.selectionChanged()
-                        onToggleWatched()
-                    } label: {
-                        Image(systemName: item.isWatched ? "eye.slash" : "checkmark.circle")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(item.isWatched ? .orange : .green)
-                            .frame(width: 36, height: 36)
-                            .background((item.isWatched ? Color.orange : Color.green).opacity(0.15))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(ScaleButtonStyle())
+                if !isSelecting {
+                    // Action buttons
+                    VStack(spacing: Spacing.sm) {
+                        // Watched toggle button
+                        Button {
+                            Haptics.shared.selectionChanged()
+                            onToggleWatched()
+                        } label: {
+                            Image(systemName: item.isWatched ? "eye.slash" : "checkmark.circle")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(item.isWatched ? .orange : .green)
+                                .frame(width: 36, height: 36)
+                                .background((item.isWatched ? Color.orange : Color.green).opacity(0.15))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(ScaleButtonStyle())
 
-                    // Notification button
-                    Button {
-                        Haptics.shared.buttonTapped()
-                        onStartLiveActivity()
-                    } label: {
-                        Image(systemName: "bell.badge")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.accentPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(Color.accentPrimary.opacity(0.15))
-                            .clipShape(Circle())
+                        // Notification button
+                        Button {
+                            Haptics.shared.buttonTapped()
+                            onStartLiveActivity()
+                        } label: {
+                            Image(systemName: "bell.badge")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.accentPrimary)
+                                .frame(width: 36, height: 36)
+                                .background(Color.accentPrimary.opacity(0.15))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(ScaleButtonStyle())
                     }
-                    .buttonStyle(ScaleButtonStyle())
                 }
             }
             .padding(Spacing.md)
@@ -657,22 +810,26 @@ struct LibraryListRow: View {
                 .onEnded { _ in isPressed = false }
         )
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                Haptics.shared.lightImpact()
-                onDelete()
-            } label: {
-                Label("Delete", systemImage: "trash")
+            if !isSelecting {
+                Button(role: .destructive) {
+                    Haptics.shared.lightImpact()
+                    onDelete()
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
             }
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                Haptics.shared.selectionChanged()
-                onToggleWatched()
-            } label: {
-                Label(item.isWatched ? "Unwatched" : "Watched",
-                      systemImage: item.isWatched ? "eye.slash" : "checkmark.circle")
+            if !isSelecting {
+                Button {
+                    Haptics.shared.selectionChanged()
+                    onToggleWatched()
+                } label: {
+                    Label(item.isWatched ? "Unwatched" : "Watched",
+                          systemImage: item.isWatched ? "eye.slash" : "checkmark.circle")
+                }
+                .tint(item.isWatched ? .orange : .green)
             }
-            .tint(item.isWatched ? .orange : .green)
         }
     }
 }

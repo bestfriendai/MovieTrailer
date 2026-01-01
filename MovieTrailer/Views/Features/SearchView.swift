@@ -125,6 +125,8 @@ struct SearchView: View {
                     // Content
                     if viewModel.isSearching {
                         loadingView
+                    } else if let error = viewModel.error, !viewModel.searchQuery.isEmpty {
+                        searchErrorView(error)
                     } else if viewModel.searchQuery.isEmpty {
                         browseContent
                     } else if viewModel.searchResults.isEmpty {
@@ -391,15 +393,13 @@ struct SearchView: View {
 
     private var loadingView: some View {
         VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.2)
-                .tint(.white)
             Text("Searching...")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.6))
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.white.opacity(0.7))
+                .padding(.top, 12)
+
+            SkeletonMovieGrid(columns: 3, rowCount: 3)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 100)
     }
 
     // MARK: - No Results
@@ -421,6 +421,13 @@ struct SearchView: View {
                     .background(Color.white.opacity(0.15))
                     .clipShape(Capsule())
             }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func searchErrorView(_ error: NetworkError) -> some View {
+        ErrorView(error: error) {
+            viewModel.search()
         }
         .frame(maxWidth: .infinity)
     }

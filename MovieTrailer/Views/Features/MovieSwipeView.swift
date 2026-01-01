@@ -13,6 +13,7 @@ struct MovieSwipeView: View {
     // MARK: - Properties
 
     @StateObject private var viewModel: MovieSwipeViewModel
+    @ObservedObject private var userPreferences = UserPreferences.shared
     @State private var showingFilters = false
     @State private var selectedGenre: Genre?
     @State private var selectedYear: String?
@@ -50,6 +51,11 @@ struct MovieSwipeView: View {
             VStack(spacing: 0) {
                 // Header with title
                 headerView
+
+                if hasPersonalization {
+                    personalizationChips
+                        .padding(.top, 12)
+                }
 
                 // Filter chips
                 filterChips
@@ -171,6 +177,52 @@ struct MovieSwipeView: View {
     }
 
     // MARK: - Filter Chips
+
+    private var hasPersonalization: Bool {
+        !userPreferences.selectedGenreIds.isEmpty || !userPreferences.selectedStreamingServices.isEmpty
+    }
+
+    private var personalizationChips: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            if !userPreferences.selectedGenreIds.isEmpty {
+                Text("Your Picks")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.textSecondary)
+                    .padding(.horizontal, Spacing.horizontal)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.sm) {
+                        ForEach(userPreferences.selectedGenres) { genre in
+                            FilterChip(
+                                title: genre.name,
+                                icon: GenreHelper.icon(for: genre.id),
+                                isSelected: selectedGenre?.id == genre.id
+                            ) {
+                                Haptics.shared.selectionChanged()
+                                if selectedGenre?.id == genre.id {
+                                    selectedGenre = nil
+                                } else {
+                                    selectedGenre = genre
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Spacing.horizontal)
+                }
+            }
+
+            if !userPreferences.selectedStreamingServices.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.sm) {
+                        ForEach(Array(userPreferences.selectedStreamingServices), id: \.self) { service in
+                            StreamingBadge(service: service, style: .compact)
+                        }
+                    }
+                    .padding(.horizontal, Spacing.horizontal)
+                }
+            }
+        }
+    }
 
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -549,51 +601,54 @@ struct MovieSwipeView: View {
     // MARK: - Loading View
 
     private var loadingView: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.5)
-                .tint(.white)
-
+        VStack(spacing: 24) {
             Text("Finding movies for you...")
                 .font(.headline)
                 .foregroundColor(.white.opacity(0.7))
+
+            SkeletonSwipeCard()
+                .frame(maxWidth: Size.swipeCardMaxWidth)
+                .aspectRatio(0.65, contentMode: .fit)
+
+            HStack(spacing: 16) {
+                Circle()
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 46, height: 46)
+                    .shimmer(isActive: true)
+
+                Circle()
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 60, height: 60)
+                    .shimmer(isActive: true, delay: 0.1)
+
+                Circle()
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 52, height: 52)
+                    .shimmer(isActive: true, delay: 0.2)
+
+                Circle()
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 60, height: 60)
+                    .shimmer(isActive: true, delay: 0.3)
+
+                Circle()
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 46, height: 46)
+                    .shimmer(isActive: true, delay: 0.4)
+            }
         }
+        .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Error View
 
     private func errorView(_ error: NetworkError) -> some View {
-        VStack(spacing: 20) {
-            Image(systemName: "wifi.exclamationmark")
-                .font(.system(size: 50))
-                .foregroundColor(.orange)
-
-            Text("Connection Error")
-                .font(.title2.bold())
-                .foregroundColor(.white)
-
-            Text(error.errorDescription ?? "Please check your connection")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.6))
-                .multilineTextAlignment(.center)
-
-            Button {
-                Task {
-                    await viewModel.loadMovies()
-                }
-            } label: {
-                Text("Try Again")
-                    .font(.headline)
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 14)
-                    .background(Color.white)
-                    .clipShape(Capsule())
+        ErrorView(error: error) {
+            Task {
+                await viewModel.loadMovies()
             }
         }
-        .padding(40)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Empty State

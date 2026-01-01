@@ -220,6 +220,7 @@ struct HomeView: View {
     // MARK: - Properties
 
     @StateObject private var viewModel: HomeViewModel
+    @ObservedObject private var userPreferences = UserPreferences.shared
     @State private var showingFilters = false
     @State private var scrollOffset: CGFloat = 0
     @State private var selectedCategory: MovieCategory?
@@ -272,6 +273,10 @@ struct HomeView: View {
 
                     // Quick filter pills
                     quickFilterSection
+
+                    if hasPersonalization {
+                        personalizationSection
+                    }
 
                     // Offline banner (if using cached data)
                     if viewModel.isUsingCachedData {
@@ -381,6 +386,12 @@ struct HomeView: View {
         .overlay {
             if viewModel.isLoading && viewModel.trendingMovies.isEmpty {
                 loadingOverlay
+            } else if let error = viewModel.error, viewModel.trendingMovies.isEmpty {
+                ErrorView(error: error) {
+                    Task {
+                        await viewModel.loadContent()
+                    }
+                }
             }
         }
         .sheet(isPresented: $showingFilters) {
@@ -531,6 +542,61 @@ struct HomeView: View {
                 }
             }
             .padding(.horizontal, Spacing.horizontal)
+        }
+    }
+
+    // MARK: - Personalization
+
+    private var hasPersonalization: Bool {
+        !userPreferences.selectedGenreIds.isEmpty || !userPreferences.selectedStreamingServices.isEmpty
+    }
+
+    private var personalizationSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            if !userPreferences.selectedGenreIds.isEmpty {
+                Text("Your Genres")
+                    .font(.headline3)
+                    .foregroundColor(.textPrimary)
+                    .padding(.horizontal, Spacing.horizontal)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.sm) {
+                        ForEach(userPreferences.selectedGenres) { genre in
+                            PreferenceChip(
+                                title: genre.name,
+                                icon: GenreHelper.icon(for: genre.id),
+                                color: Color.genre(genre.id),
+                                isSelected: viewModel.selectedGenre?.id == genre.id
+                            ) {
+                                Haptics.shared.selectionChanged()
+                                if viewModel.selectedGenre?.id == genre.id {
+                                    viewModel.selectedGenre = nil
+                                } else {
+                                    viewModel.selectedGenre = genre
+                                    viewModel.selectedQuickFilter = .none
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Spacing.horizontal)
+                }
+            }
+
+            if !userPreferences.selectedStreamingServices.isEmpty {
+                Text("Your Services")
+                    .font(.headline3)
+                    .foregroundColor(.textPrimary)
+                    .padding(.horizontal, Spacing.horizontal)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.sm) {
+                        ForEach(Array(userPreferences.selectedStreamingServices), id: \.self) { service in
+                            StreamingBadge(service: service, style: .compact)
+                        }
+                    }
+                    .padding(.horizontal, Spacing.horizontal)
+                }
+            }
         }
     }
 
@@ -804,42 +870,17 @@ struct HomeView: View {
     // MARK: - Loading Overlay
 
     private var loadingOverlay: some View {
-        ZStack {
-            Color.appBackground.ignoresSafeArea()
+        ScrollView {
+            VStack(spacing: Spacing.section) {
+                SkeletonHero()
 
-            VStack(spacing: Spacing.lg) {
-                // Animated loading indicator
-                ZStack {
-                    Circle()
-                        .stroke(Color.glassThin, lineWidth: 4)
-                        .frame(width: 60, height: 60)
-
-                    Circle()
-                        .trim(from: 0, to: 0.3)
-                        .stroke(
-                            LinearGradient(
-                                colors: [.accentPrimary, .accentSecondary],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                        )
-                        .frame(width: 60, height: 60)
-                        .rotationEffect(.degrees(-90))
-                        .modifier(SpinnerModifier())
-                }
-
-                VStack(spacing: Spacing.sm) {
-                    Text("Loading")
-                        .font(.headline2)
-                        .foregroundColor(.textPrimary)
-
-                    Text("Fetching the latest movies...")
-                        .font(.bodyMedium)
-                        .foregroundColor(.textSecondary)
-                }
+                SkeletonMovieRow(title: "Trending Now", cardCount: 6, cardWidth: 140, cardHeight: 200)
+                SkeletonMovieRow(title: "Top Rated", cardCount: 6, cardWidth: 140, cardHeight: 200)
+                SkeletonMovieRow(title: "Popular Picks", cardCount: 6, cardWidth: 140, cardHeight: 200)
             }
+            .padding(.bottom, Spacing.floatingBottom)
         }
+        .background(Color.appBackground.ignoresSafeArea())
     }
 }
 
@@ -888,6 +929,38 @@ private struct SpinnerModifier: ViewModifier {
             .onAppear {
                 isRotating = true
             }
+    }
+}
+
+// MARK: - Quick Filter Pill
+
+struct PreferenceChip: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(title)
+                    .font(.labelMedium)
+                    .lineLimit(1)
+            }
+            .foregroundColor(isSelected ? .textInverted : .textPrimary)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
+            .background(isSelected ? color : Color.glassThin)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.clear : Color.glassBorder, lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 

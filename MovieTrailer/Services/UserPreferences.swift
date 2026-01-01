@@ -24,6 +24,10 @@ final class UserPreferences: ObservableObject {
         didSet { saveStreamingServices() }
     }
 
+    @Published var selectedGenreIds: Set<Int> {
+        didSet { savePreferredGenres() }
+    }
+
     @Published var selectedCategory: MovieCategory = .all
 
     @Published var countryCode: String {
@@ -42,6 +46,7 @@ final class UserPreferences: ObservableObject {
 
     private enum Keys {
         static let streamingServices = "selectedStreamingServices"
+        static let preferredGenres = "preferredGenres"
         static let countryCode = "countryCode"
         static let includeAdult = "includeAdultContent"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
@@ -57,6 +62,12 @@ final class UserPreferences: ObservableObject {
             self.selectedStreamingServices = Set(services)
         } else {
             self.selectedStreamingServices = []
+        }
+
+        if let genreIds = UserDefaults.standard.array(forKey: Keys.preferredGenres) as? [Int] {
+            self.selectedGenreIds = Set(genreIds)
+        } else {
+            self.selectedGenreIds = []
         }
 
         // Load country code (default to US)
@@ -77,6 +88,10 @@ final class UserPreferences: ObservableObject {
         }
     }
 
+    private func savePreferredGenres() {
+        UserDefaults.standard.set(Array(selectedGenreIds), forKey: Keys.preferredGenres)
+    }
+
     func toggleStreamingService(_ service: StreamingService) {
         if selectedStreamingServices.contains(service) {
             selectedStreamingServices.remove(service)
@@ -91,6 +106,22 @@ final class UserPreferences: ObservableObject {
 
     func clearStreamingServices() {
         selectedStreamingServices.removeAll()
+    }
+
+    func toggleGenreId(_ id: Int) {
+        if selectedGenreIds.contains(id) {
+            selectedGenreIds.remove(id)
+        } else {
+            selectedGenreIds.insert(id)
+        }
+    }
+
+    func isGenreSelected(_ id: Int) -> Bool {
+        selectedGenreIds.contains(id)
+    }
+
+    var selectedGenres: [Genre] {
+        selectedGenreIds.compactMap { Genre.genre(for: $0) }
     }
 
     /// Get provider IDs for selected services
@@ -180,6 +211,7 @@ final class UserPreferences: ObservableObject {
 
     func resetAllPreferences() {
         selectedStreamingServices.removeAll()
+        selectedGenreIds.removeAll()
         countryCode = "US"
         includeAdultContent = false
         UserDefaults.standard.removeObject(forKey: Keys.swipePreferences)

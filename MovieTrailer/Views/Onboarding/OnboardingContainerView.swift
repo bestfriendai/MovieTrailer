@@ -44,6 +44,9 @@ struct OnboardingContainerView: View {
                     StreamingSetupStepView(coordinator: coordinator)
                         .tag(OnboardingStep.streamingServices)
 
+                    GenreSelectionStepView(coordinator: coordinator)
+                        .tag(OnboardingStep.genres)
+
                     AuthenticationStepView(coordinator: coordinator)
                         .tag(OnboardingStep.authentication)
                 }
@@ -396,6 +399,124 @@ struct StreamingSetupStepView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
         }
+    }
+}
+
+// MARK: - Genre Selection Step
+
+struct GenreSelectionStepView: View {
+    @ObservedObject var coordinator: OnboardingCoordinator
+
+    private let columns = [
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        GridItem(.flexible())
+    ]
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            VStack(spacing: 12) {
+                Text("Pick Your Genres")
+                    .font(.title.bold())
+                    .foregroundColor(.white)
+
+                Text("Select a few genres to tailor your recommendations")
+                    .font(.body)
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+            .padding(.top, 40)
+
+            // Genres grid
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(Genre.all) { genre in
+                        GenreSelectionButton(
+                            genre: genre,
+                            isSelected: coordinator.selectedGenreIds.contains(genre.id)
+                        ) {
+                            coordinator.toggleGenre(genre)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+
+            if !coordinator.selectedGenreIds.isEmpty {
+                Text("\(coordinator.selectedGenreIds.count) genre\(coordinator.selectedGenreIds.count == 1 ? "" : "s") selected")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.6))
+            }
+
+            Spacer()
+
+            // Navigation buttons
+            HStack(spacing: 16) {
+                Button {
+                    coordinator.back()
+                } label: {
+                    Text("Back")
+                        .font(.headline)
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.vertical, 18)
+                        .padding(.horizontal, 32)
+                }
+
+                Button {
+                    coordinator.next()
+                } label: {
+                    Text("Continue")
+                        .font(.headline)
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 40)
+        }
+    }
+}
+
+private struct GenreSelectionButton: View {
+    let genre: Genre
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? Color.genre(genre.id) : Color.white.opacity(0.1))
+                        .frame(width: 60, height: 60)
+
+                    Image(systemName: GenreHelper.icon(for: genre.id))
+                        .font(.title2)
+                        .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                }
+
+                Text(genre.name)
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.9))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? Color.genre(genre.id) : Color.white.opacity(0.1), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

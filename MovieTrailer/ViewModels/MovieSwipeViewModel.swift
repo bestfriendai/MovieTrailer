@@ -63,11 +63,14 @@ final class MovieSwipeViewModel: ObservableObject {
     }
 
     func recommendationReason(for movie: Movie) -> RecommendationReason {
-        let preferredGenres = preferences
+        let onboardingGenres = preferences.selectedGenreIds.sorted()
+        let swipeGenres = preferences
             .preferredGenres()
             .filter { $0.value > 0 }
             .sorted { $0.value > $1.value }
             .map(\.key)
+
+        let preferredGenres = !onboardingGenres.isEmpty ? onboardingGenres : swipeGenres
 
         if let matchingGenre = preferredGenres.first(where: { movie.genreIds.contains($0) }),
            let genreName = GenreHelper.name(for: matchingGenre) {

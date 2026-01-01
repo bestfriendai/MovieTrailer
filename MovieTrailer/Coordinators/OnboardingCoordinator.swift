@@ -16,13 +16,15 @@ enum OnboardingStep: Int, CaseIterable {
     case welcome = 0
     case features = 1
     case streamingServices = 2
-    case authentication = 3
+    case genres = 3
+    case authentication = 4
 
     var title: String {
         switch self {
         case .welcome: return "Welcome"
         case .features: return "Discover"
         case .streamingServices: return "Services"
+        case .genres: return "Genres"
         case .authentication: return "Account"
         }
     }
@@ -32,6 +34,7 @@ enum OnboardingStep: Int, CaseIterable {
         case .welcome: return "Your personal movie guide"
         case .features: return "Swipe to find movies you'll love"
         case .streamingServices: return "Select your streaming platforms"
+        case .genres: return "Tell us what you love"
         case .authentication: return "Save your preferences"
         }
     }
@@ -50,6 +53,7 @@ final class OnboardingCoordinator: ObservableObject {
 
     @Published var currentStep: OnboardingStep = .welcome
     @Published var selectedStreamingServices: Set<StreamingService> = []
+    @Published var selectedGenreIds: Set<Int> = []
     @Published var isAnimating = false
     @Published private(set) var isCompleting = false
 
@@ -156,6 +160,22 @@ final class OnboardingCoordinator: ObservableObject {
         Haptics.shared.lightImpact()
     }
 
+    // MARK: - Genre Preferences
+
+    func toggleGenre(_ genre: Genre) {
+        if selectedGenreIds.contains(genre.id) {
+            selectedGenreIds.remove(genre.id)
+        } else {
+            selectedGenreIds.insert(genre.id)
+        }
+        Haptics.shared.lightImpact()
+    }
+
+    func clearGenres() {
+        selectedGenreIds.removeAll()
+        Haptics.shared.lightImpact()
+    }
+
     // MARK: - Authentication Actions
 
     func signInWithGoogle() async {
@@ -198,6 +218,7 @@ final class OnboardingCoordinator: ObservableObject {
 
         // Save streaming services preference
         saveStreamingServices()
+        savePreferredGenres()
 
         // Mark onboarding as complete
         userPreferences.hasCompletedOnboarding = true
@@ -230,10 +251,15 @@ final class OnboardingCoordinator: ObservableObject {
     private func loadExistingPreferences() {
         // Load from UserPreferences if available
         selectedStreamingServices = userPreferences.selectedStreamingServices
+        selectedGenreIds = userPreferences.selectedGenreIds
     }
 
     private func saveStreamingServices() {
         userPreferences.selectedStreamingServices = selectedStreamingServices
+    }
+
+    private func savePreferredGenres() {
+        userPreferences.selectedGenreIds = selectedGenreIds
     }
 }
 
