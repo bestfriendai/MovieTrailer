@@ -960,6 +960,7 @@ struct PreferenceChip: View {
                     .stroke(isSelected ? Color.clear : Color.glassBorder, lineWidth: 0.5)
             )
         }
+        .shadow(color: isSelected ? color.opacity(0.35) : .clear, radius: 10, x: 0, y: 6)
         .buttonStyle(ScaleButtonStyle())
     }
 }
@@ -993,12 +994,25 @@ struct QuickFilterPill: View {
             .foregroundColor(isSelected ? .textInverted : .textSecondary)
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)
-            .background(isSelected ? Color.accentPrimary : Color.glassThin)
+            .background(
+                Group {
+                    if isSelected {
+                        LinearGradient(
+                            colors: [Color.accentPrimary, Color.accentSecondary],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    } else {
+                        Color.glassThin
+                    }
+                }
+            )
             .clipShape(Capsule())
             .overlay(
                 Capsule()
                     .stroke(isSelected ? Color.clear : Color.glassBorder, lineWidth: 0.5)
             )
+            .shadow(color: isSelected ? Color.accentPrimary.opacity(0.35) : .clear, radius: 10, x: 0, y: 6)
         }
         .buttonStyle(ScaleButtonStyle())
         .disabled(isLoading)

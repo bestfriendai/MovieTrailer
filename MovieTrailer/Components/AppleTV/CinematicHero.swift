@@ -69,7 +69,7 @@ struct CinematicHero: View {
                 // Content overlay
                 heroContent
                     .padding(.horizontal, Spacing.horizontal)
-                    .padding(.bottom, 70) // Extra space for page indicators
+                    .padding(.bottom, 64) // Extra space for page indicators
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
@@ -105,8 +105,6 @@ struct CinematicHero: View {
 
     private var heroContent: some View {
         VStack(spacing: Spacing.md) {
-            Spacer()
-
             // Title
             Text(movie.title)
                 .font(.displayMedium)
@@ -128,6 +126,31 @@ struct CinematicHero: View {
             // Action buttons
             actionButtons
         }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.lg)
+        .frame(maxWidth: .infinity)
+        .background(heroContentBackground)
+    }
+
+    private var heroContentBackground: some View {
+        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.25),
+                                Color.white.opacity(0.05),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.6
+                    )
+            )
+            .shadow(color: .black.opacity(0.35), radius: 18, x: 0, y: 12)
     }
 
     private var metadataRow: some View {
@@ -326,16 +349,22 @@ struct CinematicHeroCarousel: View {
                 } label: {
                     Capsule()
                         .fill(currentIndex == index ? Color.white : Color.textTertiary)
-                        .frame(width: currentIndex == index ? 24 : 8, height: 8)
+                        .frame(width: currentIndex == index ? 22 : 6, height: 6)
                         .animation(AppTheme.Animation.smooth, value: currentIndex)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, Spacing.md)
-        .padding(.horizontal, Spacing.lg)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
+        .padding(.vertical, Spacing.sm)
+        .padding(.horizontal, Spacing.md)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                )
+        )
     }
 
     private func advanceCarousel() {

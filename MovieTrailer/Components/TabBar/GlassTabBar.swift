@@ -180,11 +180,20 @@ struct AppleTVTabBar: View {
             }
         }
         .padding(.top, Spacing.sm)
-        .padding(.bottom, Spacing.xs)
+        .padding(.bottom, Spacing.sm)
         .background(
             Rectangle()
-                .fill(Color.appBackground)
-                .shadow(color: .black.opacity(0.5), radius: 10, y: -5)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.25), Color.clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 1)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                )
+                .shadow(color: .black.opacity(0.6), radius: 14, y: -6)
         )
     }
 

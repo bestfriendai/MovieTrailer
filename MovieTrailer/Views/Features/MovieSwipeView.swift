@@ -858,14 +858,20 @@ struct FilterChip: View {
                         .frame(width: 6, height: 6)
                 }
             }
-            .foregroundColor(isSelected ? .black : .textPrimary)
+            .foregroundColor(isSelected ? .textInverted : .textPrimary)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(
                 Group {
                     if isSelected {
                         Capsule()
-                            .fill(Color.accentPrimary)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.accentPrimary, Color.accentSecondary],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     } else {
                         Capsule()
                             .fill(.ultraThinMaterial)
@@ -879,7 +885,7 @@ struct FilterChip: View {
                         lineWidth: 1
                     )
             )
-            .shadow(color: isSelected ? Color.accentPrimary.opacity(0.3) : .clear, radius: 8, x: 0, y: 4)
+            .shadow(color: isSelected ? Color.accentPrimary.opacity(0.35) : .clear, radius: 10, x: 0, y: 6)
         }
         .buttonStyle(.plain)
         .scaleEffect(isSelected ? 1.02 : 1.0)
