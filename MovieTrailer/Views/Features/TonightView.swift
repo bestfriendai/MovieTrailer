@@ -101,26 +101,11 @@ struct TonightView: View {
     // MARK: - Empty State
     
     private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 80))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.orange, .pink],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            Text("No Recommendations Yet")
-                .font(.title2.bold())
-            
-            Text("Add some movies to your watchlist to get personalized recommendations!")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-            
+        EmptyStateView(
+            icon: "sparkles",
+            title: "No Recommendations Yet",
+            message: "Add some movies to your watchlist to get personalized recommendations!"
+        ) {
             Button {
                 Task {
                     await viewModel.generateRecommendations()
@@ -148,7 +133,6 @@ struct TonightView: View {
             }
             .buttonStyle(ScaleButtonStyle())
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

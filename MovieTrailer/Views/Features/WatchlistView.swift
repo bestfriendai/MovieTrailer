@@ -328,43 +328,11 @@ struct WatchlistView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack(spacing: Spacing.xl) {
-            // Animated empty state
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.accentPrimary.opacity(0.1), .accentSecondary.opacity(0.1)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 140, height: 140)
-
-                Image(systemName: "bookmark.slash")
-                    .font(.system(size: 60, weight: .light))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.textSecondary, .textTertiary],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            }
-
-            VStack(spacing: Spacing.sm) {
-                Text("Your Library is Empty")
-                    .font(.displaySmall)
-                    .foregroundColor(.textPrimary)
-
-                Text("Start adding movies to your library to keep track of what you want to watch!")
-                    .font(.bodyMedium)
-                    .foregroundColor(.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, Spacing.xl)
-
-            // Suggestion buttons
+        EmptyStateView(
+            icon: "bookmark.slash",
+            title: "Your Library is Empty",
+            message: "Start adding movies to your library to keep track of what you want to watch!"
+        ) {
             VStack(spacing: Spacing.md) {
                 Text("Try these:")
                     .font(.labelMedium)

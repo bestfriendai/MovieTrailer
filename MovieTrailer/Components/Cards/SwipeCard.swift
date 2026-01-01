@@ -14,6 +14,7 @@ struct SwipeCard: View {
     // MARK: - Properties
 
     let movie: Movie
+    let recommendationReason: RecommendationReason? = nil
     let onSwipe: (SwipeDirection) -> Void
     let onTap: () -> Void
     var isTopCard: Bool = true
@@ -388,6 +389,10 @@ struct SwipeCard: View {
                 }
             }
 
+            if let reason = recommendationReason {
+                reasonBadge(reason)
+            }
+
             // Title with year inline
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(movie.title)
@@ -420,6 +425,24 @@ struct SwipeCard: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 28)
+    }
+
+    private func reasonBadge(_ reason: RecommendationReason) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: reason.icon)
+                .font(.system(size: 11, weight: .semibold))
+            Text(reason.text)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(1)
+        }
+        .foregroundColor(.white.opacity(0.9))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(.white.opacity(0.2), lineWidth: 0.5)
+        )
     }
 
     // MARK: - Modern Swipe Hint

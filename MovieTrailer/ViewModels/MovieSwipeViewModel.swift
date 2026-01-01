@@ -62,6 +62,39 @@ final class MovieSwipeViewModel: ObservableObject {
         return Double(likedMovies.count) / Double(total) * 100
     }
 
+    func recommendationReason(for movie: Movie) -> RecommendationReason {
+        let preferredGenres = preferences
+            .preferredGenres()
+            .filter { $0.value > 0 }
+            .sorted { $0.value > $1.value }
+            .map(\.key)
+
+        if let matchingGenre = preferredGenres.first(where: { movie.genreIds.contains($0) }),
+           let genreName = GenreHelper.name(for: matchingGenre) {
+            return RecommendationReason(
+                icon: GenreHelper.icon(for: matchingGenre),
+                text: "Because you like \(genreName)"
+            )
+        }
+
+        if let year = movie.releaseYear, let yearInt = Int(year) {
+            let currentYear = Calendar.current.component(.year, from: Date())
+            if yearInt >= currentYear - 1 {
+                return RecommendationReason(icon: "calendar", text: "New release")
+            }
+        }
+
+        if movie.voteAverage >= 7.5 {
+            return RecommendationReason(icon: "star.fill", text: "Highly rated")
+        }
+
+        if movie.voteCount >= 1000 {
+            return RecommendationReason(icon: "flame.fill", text: "Popular pick")
+        }
+
+        return RecommendationReason(icon: "sparkles", text: "Recommended for you")
+    }
+
     // MARK: - Initialization
 
     init(

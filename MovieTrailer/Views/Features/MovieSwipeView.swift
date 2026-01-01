@@ -268,6 +268,7 @@ struct MovieSwipeView: View {
     private func movieCard(for movie: Movie, isTopCard: Bool) -> some View {
         SwipeCard(
             movie: movie,
+            recommendationReason: isTopCard ? viewModel.recommendationReason(for: movie) : nil,
             onSwipe: { direction in
                 handleSwipe(direction, for: movie)
             },
@@ -598,19 +599,11 @@ struct MovieSwipeView: View {
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.green)
-
-            Text("All Done!")
-                .font(.title.bold())
-                .foregroundColor(.white)
-
-            Text("You've reviewed all available movies")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.6))
-
+        EmptyStateView(
+            icon: "checkmark.circle.fill",
+            title: "All Done!",
+            message: "You've reviewed all available movies"
+        ) {
             HStack(spacing: 16) {
                 Button {
                     viewModel.showStats = true
@@ -639,7 +632,6 @@ struct MovieSwipeView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Match Overlay

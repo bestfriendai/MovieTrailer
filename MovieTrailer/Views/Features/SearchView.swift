@@ -79,11 +79,29 @@ enum StreamingProvider: Int, CaseIterable, Identifiable {
     }
 }
 
+private enum SearchSortOption: String, CaseIterable {
+    case popularity = "Popularity"
+    case rating = "Rating"
+    case releaseDate = "Release Date"
+
+    var icon: String {
+        switch self {
+        case .popularity:
+            return "flame.fill"
+        case .rating:
+            return "star.fill"
+        case .releaseDate:
+            return "calendar"
+        }
+    }
+}
+
 struct SearchView: View {
 
     @StateObject private var viewModel: SearchViewModel
     @StateObject private var voiceSearch = VoiceSearchManager()
     @FocusState private var isSearchFocused: Bool
+    @State private var sortOption: SearchSortOption = .popularity
 
     let onMovieTap: (Movie) -> Void
 
@@ -120,6 +138,17 @@ struct SearchView: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .preferredColorScheme(.dark)
+    }
+
+    private var sortedSearchResults: [Movie] {
+        switch sortOption {
+        case .popularity:
+            return viewModel.searchResults.sorted { $0.popularity > $1.popularity }
+        case .rating:
+            return viewModel.searchResults.sorted { $0.voteAverage > $1.voteAverage }
+        case .releaseDate:
+            return viewModel.searchResults.sorted { ($0.releaseDate ?? "") > ($1.releaseDate ?? "") }
+        }
     }
 
     // MARK: - Search Bar
@@ -376,38 +405,63 @@ struct SearchView: View {
     // MARK: - No Results
 
     private var noResultsView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 48))
-                .foregroundColor(.white.opacity(0.3))
-
-            Text("No results found")
-                .font(.title3.bold())
-                .foregroundColor(.white)
-
-            Text("Try a different search term")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.6))
+        EmptyStateView(
+            icon: "magnifyingglass",
+            title: "No results found",
+            message: "Try a different search term"
+        ) {
+            Button {
+                viewModel.clearSearch()
+            } label: {
+                Text("Clear Search")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Color.white.opacity(0.15))
+                    .clipShape(Capsule())
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 100)
     }
 
     // MARK: - Search Results
 
     private var searchResultsGrid: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("\(viewModel.searchResults.count) Results")
-                .font(.headline)
-                .foregroundColor(.white.opacity(0.6))
-                .padding(.horizontal, 20)
+            HStack {
+                Text("\(viewModel.searchResults.count) Results")
+                    .font(.headline)
+                    .foregroundColor(.white.opacity(0.6))
+
+                Spacer()
+
+                Menu {
+                    ForEach(SearchSortOption.allCases, id: \.self) { option in
+                        Button {
+                            sortOption = option
+                        } label: {
+                            Label(option.rawValue, systemImage: option.icon)
+                        }
+                    }
+                } label: {
+                    Label("Sort", systemImage: "arrow.up.arrow.down")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, 20)
 
             LazyVGrid(columns: [
                 GridItem(.flexible(), spacing: 12),
                 GridItem(.flexible(), spacing: 12),
                 GridItem(.flexible(), spacing: 12)
             ], spacing: 16) {
-                ForEach(viewModel.searchResults) { movie in
+                ForEach(sortedSearchResults) { movie in
                     SearchResultCard(movie: movie) {
                         onMovieTap(movie)
                     }
