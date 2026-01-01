@@ -12,10 +12,19 @@ import Kingfisher
 struct WatchProvidersView: View {
 
     let providers: WatchProviderInfo
+    let movieTitle: String?
+    let releaseDate: String?
     let onProviderTap: ((String?) -> Void)?
 
-    init(providers: WatchProviderInfo, onProviderTap: ((String?) -> Void)? = nil) {
+    init(
+        providers: WatchProviderInfo,
+        movieTitle: String? = nil,
+        releaseDate: String? = nil,
+        onProviderTap: ((String?) -> Void)? = nil
+    ) {
         self.providers = providers
+        self.movieTitle = movieTitle
+        self.releaseDate = releaseDate
         self.onProviderTap = onProviderTap
     }
 
@@ -42,6 +51,10 @@ struct WatchProvidersView: View {
                             .foregroundColor(.white.opacity(0.5))
                     }
                 }
+            }
+
+            if isInTheaters {
+                theaterSection
             }
 
             if providers.isEmpty {
@@ -99,6 +112,73 @@ struct WatchProvidersView: View {
                 .foregroundColor(.secondary)
         }
         .padding(.horizontal)
+    }
+
+    private var theaterSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "popcorn.fill")
+                    .font(.caption)
+                    .foregroundColor(.accentOrange)
+
+                Text("In Theaters")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(.secondary)
+            }
+
+            if let url = fandangoURL {
+                if let onProviderTap = onProviderTap {
+                    Button {
+                        onProviderTap(url.absoluteString)
+                    } label: {
+                        ticketButtonLabel
+                    }
+                } else {
+                    Link(destination: url) {
+                        ticketButtonLabel
+                    }
+                }
+            } else {
+                Text("Check local listings")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private var ticketButtonLabel: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "ticket.fill")
+                .font(.system(size: 14, weight: .semibold))
+
+            Text("Get Tickets on Fandango")
+                .font(.subheadline.weight(.semibold))
+        }
+        .foregroundColor(.textInverted)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.accentPrimary)
+        .clipShape(Capsule())
+    }
+
+    private var fandangoURL: URL? {
+        guard let title = movieTitle,
+              let encoded = title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return nil
+        }
+        return URL(string: "https://www.fandango.com/search?q=\(encoded)")
+    }
+
+    private var isInTheaters: Bool {
+        guard let releaseDate else { return false }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: releaseDate) else { return false }
+
+        let now = Date()
+        let pastWindow = Calendar.current.date(byAdding: .day, value: -90, to: now) ?? now
+        let futureWindow = Calendar.current.date(byAdding: .day, value: 30, to: now) ?? now
+        return date >= pastWindow && date <= futureWindow
     }
 }
 

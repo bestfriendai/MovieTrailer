@@ -54,7 +54,11 @@ struct MovieDetailView: View {
                     if isLoadingProviders {
                         providersLoadingSection
                     } else {
-                        WatchProvidersView(providers: watchProviders) { link in
+                        WatchProvidersView(
+                            providers: watchProviders,
+                            movieTitle: movie.title,
+                            releaseDate: movie.releaseDate
+                        ) { link in
                             if let link = link, let url = URL(string: link) {
                                 UIApplication.shared.open(url)
                             }
