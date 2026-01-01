@@ -45,6 +45,9 @@ struct FilterSheetView: View {
                     // Rating
                     ratingSection
 
+                    // Quality filter (vote count)
+                    qualitySection
+
                     // Release year
                     releaseYearSection
 
@@ -350,6 +353,52 @@ struct FilterSheetView: View {
                     .buttonStyle(ScaleButtonStyle())
                 }
             }
+        }
+    }
+
+    // MARK: - Quality Section (Vote Count)
+
+    private var qualitySection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            sectionHeader("Review Volume")
+
+            Text("Filter by how many people have reviewed")
+                .font(.caption)
+                .foregroundColor(.textTertiary)
+
+            HStack(spacing: Spacing.xs) {
+                ForEach([
+                    ("Any", 0),
+                    ("50+", 50),
+                    ("100+", 100),
+                    ("500+", 500),
+                    ("1000+", 1000)
+                ], id: \.1) { label, count in
+                    Button {
+                        Haptics.shared.selectionChanged()
+                        tempFilter.minimumVotes = count
+                    } label: {
+                        Text(label)
+                            .font(.labelSmall)
+                            .foregroundColor(tempFilter.minimumVotes == count ? .textInverted : .textSecondary)
+                            .padding(.horizontal, Spacing.sm)
+                            .padding(.vertical, Spacing.xs)
+                            .background(tempFilter.minimumVotes == count ? Color.accentBlue : Color.surfaceElevated)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(ScaleButtonStyle())
+                }
+            }
+
+            // Explanation
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: "info.circle")
+                    .font(.caption)
+                Text("Higher = more well-known films. Lower = hidden gems.")
+                    .font(.caption)
+            }
+            .foregroundColor(.textTertiary)
+            .padding(.top, Spacing.xs)
         }
     }
 

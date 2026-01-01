@@ -76,6 +76,8 @@
 	<true/>
 	<key>TMDB_API_KEY</key>
 	<string>f92702575f616766a4eff39c706415cc</string>
+	<key>GEMINI_API_KEY</key>
+	<string>AIzaSyDIfadSE-o_PFQx__qw4wRXyj141MRg8-4</string>
 	<key>UIApplicationShortcutItems</key>
 	<array>
 		<dict>

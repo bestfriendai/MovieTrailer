@@ -364,9 +364,24 @@ struct HomeView: View {
                         )
                     }
 
+                    // Upcoming Movies
+                    if !viewModel.upcomingMovies.isEmpty && !viewModel.hasActiveFilters {
+                        upcomingSection
+                    }
+
                     // Genre Sections (hide when filtering)
                     if !viewModel.hasActiveFilters {
                         genreSections
+                    }
+
+                    // Special Curated Sections
+                    if !viewModel.hasActiveFilters {
+                        specialSections
+                    }
+
+                    // More Genre Sections
+                    if !viewModel.hasActiveFilters {
+                        moreGenreSections
                     }
 
                     // Bottom padding for tab bar
@@ -436,10 +451,10 @@ struct HomeView: View {
         case .horror: return viewModel.horrorMovies
         case .sciFi: return viewModel.sciFiMovies
         case .all: return viewModel.popularMovies
-        case .animation: return viewModel.popularMovies.filter { $0.genreIds.contains(16) }
-        case .romance: return viewModel.popularMovies.filter { $0.genreIds.contains(10749) }
-        case .thriller: return viewModel.popularMovies.filter { $0.genreIds.contains(53) }
-        case .documentary: return viewModel.popularMovies.filter { $0.genreIds.contains(99) }
+        case .animation: return viewModel.animationMovies.isEmpty ? viewModel.popularMovies.filter { $0.genreIds.contains(16) } : viewModel.animationMovies
+        case .romance: return viewModel.romanceMovies.isEmpty ? viewModel.popularMovies.filter { $0.genreIds.contains(10749) } : viewModel.romanceMovies
+        case .thriller: return viewModel.thrillerMovies.isEmpty ? viewModel.popularMovies.filter { $0.genreIds.contains(53) } : viewModel.thrillerMovies
+        case .documentary: return viewModel.documentaryMovies.isEmpty ? viewModel.popularMovies.filter { $0.genreIds.contains(99) } : viewModel.documentaryMovies
         }
     }
 
@@ -867,6 +882,155 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Upcoming Section
+
+    private var upcomingSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Header
+            HStack(spacing: Spacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.purple.opacity(0.3), .blue.opacity(0.3)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 32, height: 32)
+
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.purple)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Coming Soon")
+                        .font(.headline1)
+                        .foregroundColor(.textPrimary)
+
+                    Text("Movies releasing soon")
+                        .font(.labelMedium)
+                        .foregroundColor(.textTertiary)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, Spacing.horizontal)
+
+            // Movies
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.md) {
+                    ForEach(viewModel.upcomingMovies) { movie in
+                        UpcomingMovieCard(movie: movie) {
+                            onMovieTap(movie)
+                        }
+                    }
+                }
+                .padding(.horizontal, Spacing.horizontal)
+            }
+        }
+    }
+
+    // MARK: - Special Sections
+
+    @ViewBuilder
+    private var specialSections: some View {
+        // Hidden Gems
+        if !viewModel.hiddenGems.isEmpty {
+            ContentRow(
+                title: "Hidden Gems",
+                subtitle: "Underrated films worth discovering",
+                movies: viewModel.hiddenGems,
+                onMovieTap: onMovieTap,
+                onSeeAll: nil
+            )
+        }
+
+        // This Year's Best
+        if !viewModel.thisYearsBest.isEmpty {
+            FeaturedRow(
+                title: "Best of \(Calendar.current.component(.year, from: Date()))",
+                subtitle: "Top rated this year",
+                movies: Array(viewModel.thisYearsBest.prefix(10)),
+                onMovieTap: onMovieTap,
+                onTrailerTap: onPlayTrailer,
+                onSeeAll: nil
+            )
+        }
+
+        // Highly Rated All Time
+        if !viewModel.highlyRated.isEmpty {
+            ContentRow(
+                title: "Critically Acclaimed",
+                subtitle: "Highest rated of all time",
+                movies: viewModel.highlyRated,
+                onMovieTap: onMovieTap,
+                onSeeAll: nil
+            )
+        }
+
+        // Classic Movies (2000s)
+        if !viewModel.classicMovies.isEmpty {
+            ContentRow(
+                title: "2000s Classics",
+                subtitle: "Timeless movies from the 2000s",
+                movies: viewModel.classicMovies,
+                onMovieTap: onMovieTap,
+                onSeeAll: nil
+            )
+        }
+    }
+
+    // MARK: - More Genre Sections
+
+    @ViewBuilder
+    private var moreGenreSections: some View {
+        // Animation
+        if !viewModel.animationMovies.isEmpty {
+            CompactMovieRow(
+                title: "Animation",
+                icon: "paintpalette.fill",
+                movies: viewModel.animationMovies,
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.animation) }
+            )
+        }
+
+        // Romance
+        if !viewModel.romanceMovies.isEmpty {
+            CompactMovieRow(
+                title: "Romance",
+                icon: "heart.fill",
+                movies: viewModel.romanceMovies,
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.romance) }
+            )
+        }
+
+        // Thriller
+        if !viewModel.thrillerMovies.isEmpty {
+            CompactMovieRow(
+                title: "Thriller",
+                icon: "eye.fill",
+                movies: viewModel.thrillerMovies,
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.thriller) }
+            )
+        }
+
+        // Documentary
+        if !viewModel.documentaryMovies.isEmpty {
+            CompactMovieRow(
+                title: "Documentary",
+                icon: "film.stack.fill",
+                movies: viewModel.documentaryMovies,
+                onMovieTap: onMovieTap,
+                onSeeAll: { showCategory(.documentary) }
+            )
+        }
+    }
+
     // MARK: - Loading Overlay
 
     private var loadingOverlay: some View {
@@ -1179,6 +1343,148 @@ struct TheaterCardButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - Upcoming Movie Card
+
+struct UpcomingMovieCard: View {
+
+    let movie: Movie
+    let onTap: () -> Void
+
+    @State private var isPressed = false
+
+    private let cardWidth: CGFloat = 160
+    private let cardHeight: CGFloat = 280
+
+    private var releaseDate: Date? {
+        guard let dateString = movie.releaseDate else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.date(from: dateString)
+    }
+
+    private var releaseInfo: String {
+        guard let date = releaseDate else { return "TBA" }
+
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "MMM d, yyyy"
+        return displayFormatter.string(from: date)
+    }
+
+    private var daysUntilRelease: Int? {
+        guard let date = releaseDate else { return nil }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let release = calendar.startOfDay(for: date)
+
+        let days = calendar.dateComponents([.day], from: today, to: release).day
+        return days
+    }
+
+    private var isReleased: Bool {
+        guard let days = daysUntilRelease else { return false }
+        return days <= 0
+    }
+
+    var body: some View {
+        Button(action: {
+            Haptics.shared.cardTapped()
+            onTap()
+        }) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Poster with overlay
+                ZStack(alignment: .topTrailing) {
+                    KFImage(movie.posterURL)
+                        .placeholder {
+                            Rectangle()
+                                .fill(Color.surfaceSecondary)
+                                .shimmer(isActive: true)
+                        }
+                        .resizable()
+                        .aspectRatio(2/3, contentMode: .fill)
+                        .frame(width: cardWidth, height: cardWidth * 1.5)
+                        .clipped()
+
+                    // Release badge
+                    if let days = daysUntilRelease {
+                        Group {
+                            if days <= 0 {
+                                Text("Out Now")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.green)
+                                    .clipShape(Capsule())
+                            } else if days == 1 {
+                                Text("Tomorrow")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.orange)
+                                    .clipShape(Capsule())
+                            } else if days <= 7 {
+                                Text("\(days) days")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.orange)
+                                    .clipShape(Capsule())
+                            } else {
+                                Text("\(days) days")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        LinearGradient(
+                                            colors: [.purple, .blue],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .clipShape(Capsule())
+                            }
+                        }
+                        .padding(8)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                // Info section
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(movie.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(2)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 10))
+                            .foregroundColor(.purple)
+                        Text(releaseInfo)
+                            .font(.caption)
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+                .padding(.top, 8)
+                .frame(width: cardWidth, alignment: .leading)
+            }
+            .scaleEffect(isPressed ? 0.96 : 1.0)
+            .animation(AppTheme.Animation.quick, value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
 // MARK: - KFImage Import
 
 import Kingfisher
@@ -1223,6 +1529,17 @@ final class HomeViewModel: ObservableObject {
     @Published var dramaMovies: [Movie] = []
     @Published var horrorMovies: [Movie] = []
     @Published var sciFiMovies: [Movie] = []
+    @Published var animationMovies: [Movie] = []
+    @Published var romanceMovies: [Movie] = []
+    @Published var thrillerMovies: [Movie] = []
+    @Published var documentaryMovies: [Movie] = []
+
+    // Special sections
+    @Published var upcomingMovies: [Movie] = []
+    @Published var hiddenGems: [Movie] = []
+    @Published var thisYearsBest: [Movie] = []
+    @Published var classicMovies: [Movie] = []
+    @Published var highlyRated: [Movie] = []
 
     // View state for proper error handling
     @Published var viewState: ViewState = .idle
@@ -1412,6 +1729,9 @@ final class HomeViewModel: ObservableObject {
 
         // Load genre-specific movies from TMDB discover API
         await loadGenreMovies()
+
+        // Load special sections
+        await loadSpecialSections()
 
         // Prefetch images for featured movies
         prefetchImages()
@@ -1670,6 +1990,103 @@ final class HomeViewModel: ObservableObject {
             group.addTask { await self.loadGenre(id: 18, into: \.dramaMovies) }
             group.addTask { await self.loadGenre(id: 27, into: \.horrorMovies) }
             group.addTask { await self.loadGenre(id: 878, into: \.sciFiMovies) }
+            group.addTask { await self.loadGenre(id: 16, into: \.animationMovies) }
+            group.addTask { await self.loadGenre(id: 10749, into: \.romanceMovies) }
+            group.addTask { await self.loadGenre(id: 53, into: \.thrillerMovies) }
+            group.addTask { await self.loadGenre(id: 99, into: \.documentaryMovies) }
+        }
+    }
+
+    /// Fetch special curated sections
+    private func loadSpecialSections() async {
+        await withTaskGroup(of: Void.self) { group in
+            // Upcoming movies - filter to only future releases
+            group.addTask {
+                do {
+                    let response = try await self.tmdbService.fetchUpcoming(page: 1)
+                    let today = Date()
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd"
+                    formatter.timeZone = TimeZone(identifier: "UTC")
+
+                    // Filter to only include movies releasing in the future
+                    let futureMovies = response.results.filter { movie in
+                        guard let dateString = movie.releaseDate,
+                              let releaseDate = formatter.date(from: dateString) else {
+                            return false
+                        }
+                        return releaseDate > today
+                    }.sorted { m1, m2 in
+                        // Sort by release date ascending (soonest first)
+                        guard let d1 = m1.releaseDate, let d2 = m2.releaseDate else { return false }
+                        return d1 < d2
+                    }
+
+                    await MainActor.run {
+                        self.upcomingMovies = Array(futureMovies.prefix(15))
+                    }
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to load upcoming: \(error)")
+                    #endif
+                }
+            }
+
+            // Hidden gems
+            group.addTask {
+                do {
+                    let response = try await self.tmdbService.fetchHiddenGems(page: 1)
+                    await MainActor.run {
+                        self.hiddenGems = Array(response.results.prefix(15))
+                    }
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to load hidden gems: \(error)")
+                    #endif
+                }
+            }
+
+            // This year's best
+            group.addTask {
+                do {
+                    let response = try await self.tmdbService.fetchThisYearsBest(page: 1)
+                    await MainActor.run {
+                        self.thisYearsBest = Array(response.results.prefix(15))
+                    }
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to load this year's best: \(error)")
+                    #endif
+                }
+            }
+
+            // Highly rated all time
+            group.addTask {
+                do {
+                    let response = try await self.tmdbService.fetchHighlyRatedMovies(page: 1)
+                    await MainActor.run {
+                        self.highlyRated = Array(response.results.prefix(15))
+                    }
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to load highly rated: \(error)")
+                    #endif
+                }
+            }
+
+            // Classic movies (2000s decade)
+            group.addTask {
+                do {
+                    let response = try await self.tmdbService.fetchMoviesByDecade(2000, page: 1)
+                    await MainActor.run {
+                        self.classicMovies = Array(response.results.prefix(15))
+                    }
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to load classics: \(error)")
+                    #endif
+                }
+            }
         }
     }
 

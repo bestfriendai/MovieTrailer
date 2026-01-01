@@ -10,6 +10,10 @@ import Foundation
 import SwiftUI
 import Combine
 
+#if canImport(FirebaseFirestore)
+import FirebaseFirestore
+#endif
+
 // MARK: - Smart Collection
 
 struct SmartCollection: Identifiable, Codable, Equatable {
@@ -137,7 +141,7 @@ actor WatchlistIO {
 }
 
 /// Manages watchlist persistence using FileManager and AppStorage
-/// Enhanced with background I/O, debounce, and Smart Collections
+/// Enhanced with background I/O, debounce, Smart Collections, and Firebase sync
 @MainActor
 class WatchlistManager: ObservableObject {
 
@@ -147,12 +151,16 @@ class WatchlistManager: ObservableObject {
     @Published private(set) var collections: [SmartCollection] = SmartCollection.allBuiltIn
     @Published private(set) var isLoading = false
     @Published private(set) var error: Error?
+    @Published private(set) var isSyncing = false
 
     // MARK: - Storage
 
     private let io = WatchlistIO()
+    private let firestoreService = FirestoreService.shared
     private var saveTask: Task<Void, Never>?
+    private var syncTask: Task<Void, Never>?
     private var debounceDelay: UInt64 = 500_000_000 // 0.5 seconds in nanoseconds
+    private var cancellables = Set<AnyCancellable>()
 
     /// AppStorage for quick ID lookup
     @AppStorage("watchlist_ids") private var watchlistIDsData: Data = Data()
@@ -180,6 +188,21 @@ class WatchlistManager: ObservableObject {
         Task {
             await loadWatchlist()
         }
+        observeAuthState()
+    }
+
+    // MARK: - Auth State Observation
+
+    private func observeAuthState() {
+        AuthenticationManager.shared.$authState
+            .sink { [weak self] state in
+                if case .authenticated(let user) = state, !user.isGuest {
+                    Task { @MainActor in
+                        await self?.syncFromFirestore(userId: user.id)
+                    }
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public Methods
@@ -201,12 +224,14 @@ class WatchlistManager: ObservableObject {
         let item = WatchlistItem(from: movie)
         items.insert(item, at: 0) // Add to beginning
         debouncedSave()
+        syncAddToFirestore(movie)
     }
 
     /// Remove a movie from the watchlist
     func remove(_ movieID: Int) {
         items.removeAll { $0.id == movieID }
         debouncedSave()
+        syncRemoveFromFirestore(movieID)
     }
 
     /// Remove a movie from the watchlist
@@ -420,6 +445,119 @@ class WatchlistManager: ObservableObject {
 
         debouncedSave()
     }
+
+    // MARK: - Firestore Sync
+
+    /// Sync add to Firestore
+    private func syncAddToFirestore(_ movie: Movie) {
+        guard case .authenticated(let user) = AuthenticationManager.shared.authState,
+              !user.isGuest else { return }
+
+        Task {
+            do {
+                let syncItem = SyncWatchlistItem(from: movie)
+                try await firestoreService.addToWatchlist(syncItem, for: user.id)
+                print("✅ Added to Firestore watchlist: \(movie.title)")
+            } catch {
+                print("❌ Failed to sync add to Firestore: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Sync remove from Firestore
+    private func syncRemoveFromFirestore(_ movieId: Int) {
+        guard case .authenticated(let user) = AuthenticationManager.shared.authState,
+              !user.isGuest else { return }
+
+        Task {
+            do {
+                try await firestoreService.removeFromWatchlist(movieId: movieId, for: user.id)
+                print("✅ Removed from Firestore watchlist: \(movieId)")
+            } catch {
+                print("❌ Failed to sync remove from Firestore: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Sync full watchlist to Firestore
+    func syncToFirestore() async {
+        guard case .authenticated(let user) = AuthenticationManager.shared.authState,
+              !user.isGuest else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            let syncItems = items.map { item in
+                SyncWatchlistItem(
+                    id: item.id,
+                    title: item.title,
+                    posterPath: item.posterPath,
+                    releaseDate: item.releaseDate,
+                    voteAverage: item.voteAverage,
+                    addedAt: item.addedAt,
+                    watched: item.isWatched,
+                    watchedAt: nil,
+                    userRating: nil,
+                    notes: nil
+                )
+            }
+            try await firestoreService.saveWatchlist(syncItems, for: user.id)
+            print("✅ Synced \(items.count) items to Firestore watchlist")
+        } catch {
+            print("❌ Failed to sync watchlist to Firestore: \(error.localizedDescription)")
+        }
+    }
+
+    /// Sync from Firestore (on login)
+    func syncFromFirestore(userId: String) async {
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            let remoteItems = try await firestoreService.fetchWatchlist(for: userId)
+
+            // Merge remote items with local
+            for remoteItem in remoteItems {
+                if !items.contains(where: { $0.id == remoteItem.id }) {
+                    // Create a minimal Movie object to use with WatchlistItem initializer
+                    let movie = Movie(
+                        id: remoteItem.id,
+                        title: remoteItem.title,
+                        overview: "",
+                        posterPath: remoteItem.posterPath,
+                        backdropPath: nil,
+                        releaseDate: remoteItem.releaseDate,
+                        voteAverage: remoteItem.voteAverage,
+                        voteCount: 0,
+                        popularity: 0,
+                        genreIds: [],
+                        adult: false,
+                        originalLanguage: "en",
+                        originalTitle: remoteItem.title,
+                        video: false
+                    )
+                    let watchlistItem = WatchlistItem(from: movie, isWatched: remoteItem.watched)
+                    items.append(watchlistItem)
+                }
+            }
+
+            // Sort by date added (most recent first)
+            items.sort { (item1: WatchlistItem, item2: WatchlistItem) -> Bool in
+                item1.addedAt > item2.addedAt
+            }
+
+            // Save merged list locally
+            try await io.saveItems(items)
+
+            // Sync back to ensure cloud has all items
+            await syncToFirestore()
+
+            print("✅ Synced \(remoteItems.count) items from Firestore watchlist")
+        } catch {
+            print("❌ Failed to sync from Firestore: \(error.localizedDescription)")
+        }
+    }
 }
 
 // MARK: - Preview Helpers
@@ -432,7 +570,7 @@ extension WatchlistManager {
         manager.items = WatchlistItem.samples
         return manager
     }
-    
+
     /// Create an empty mock manager
     static func mockEmpty() -> WatchlistManager {
         WatchlistManager()

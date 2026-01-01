@@ -64,6 +64,7 @@ final class NavigationRouter: ObservableObject {
     @Published var homePath = NavigationPath()
     @Published var swipePath = NavigationPath()
     @Published var searchPath = NavigationPath()
+    @Published var chatPath = NavigationPath()
     @Published var libraryPath = NavigationPath()
 
     /// Pending deep link destination
@@ -99,6 +100,8 @@ final class NavigationRouter: ObservableObject {
             swipePath = NavigationPath()
         case .search:
             searchPath = NavigationPath()
+        case .chat:
+            chatPath = NavigationPath()
         case .library:
             libraryPath = NavigationPath()
         }
@@ -109,6 +112,7 @@ final class NavigationRouter: ObservableObject {
         homePath = NavigationPath()
         swipePath = NavigationPath()
         searchPath = NavigationPath()
+        chatPath = NavigationPath()
         libraryPath = NavigationPath()
     }
 }

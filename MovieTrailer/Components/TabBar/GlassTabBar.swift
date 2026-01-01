@@ -14,6 +14,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     case home = "Home"
     case swipe = "Discover"
     case search = "Search"
+    case chat = "Chat"
     case library = "Library"
 
     var id: String { rawValue }
@@ -23,7 +24,8 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return 0
         case .swipe: return 1
         case .search: return 2
-        case .library: return 3
+        case .chat: return 3
+        case .library: return 4
         }
     }
 
@@ -32,7 +34,8 @@ enum AppTab: String, CaseIterable, Identifiable {
         case 0: return .home
         case 1: return .swipe
         case 2: return .search
-        case 3: return .library
+        case 3: return .chat
+        case 4: return .library
         default: return .home
         }
     }
@@ -42,6 +45,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return "house"
         case .swipe: return "rectangle.stack"
         case .search: return "magnifyingglass"
+        case .chat: return "bubble.left.and.bubble.right"
         case .library: return "bookmark"
         }
     }
@@ -51,6 +55,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return "house.fill"
         case .swipe: return "rectangle.stack.fill"
         case .search: return "magnifyingglass"
+        case .chat: return "bubble.left.and.bubble.right.fill"
         case .library: return "bookmark.fill"
         }
     }
@@ -60,6 +65,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .home: return .accentPrimary
         case .swipe: return .swipeLove
         case .search: return .accentSecondary
+        case .chat: return .cyan
         case .library: return .orange
         }
     }

@@ -26,6 +26,14 @@
 				<string>movietrailer</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.354122161382-b0uogugrujl5behm45rts12lks6ocbsn</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
@@ -72,6 +80,8 @@
 	<true/>
 	<key>TMDB_API_KEY</key>
 	<string>f92702575f616766a4eff39c706415cc</string>
+	<key>GEMINI_API_KEY</key>
+	<string>AIzaSyDIfadSE-o_PFQx__qw4wRXyj141MRg8-4</string>
 	<key>UIApplicationShortcutItems</key>
 	<array>
 		<dict>

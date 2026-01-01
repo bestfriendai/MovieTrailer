@@ -240,6 +240,7 @@ final class MovieSwipeViewModel: ObservableObject {
         switch direction {
         case .right:
             likedMovies.append(movie)
+            watchlistManager.add(movie)  // Add to Library when swiped right
             action = .liked
             recommendationAction = .liked
             // Check for "match" animation (high rating + liked)
@@ -307,6 +308,9 @@ final class MovieSwipeViewModel: ObservableObject {
         // Remove from appropriate list
         if let lastLiked = likedMovies.last, lastLiked.id == currentMovie?.id {
             likedMovies.removeLast()
+            if let movie = currentMovie {
+                watchlistManager.remove(movie)  // Also remove from Library
+            }
         } else if let lastSkipped = skippedMovies.last, lastSkipped.id == currentMovie?.id {
             skippedMovies.removeLast()
         } else if let lastWatchLater = watchLaterMovies.last, lastWatchLater.id == currentMovie?.id {

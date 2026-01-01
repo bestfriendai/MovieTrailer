@@ -18,6 +18,7 @@ enum TMDBEndpoint {
     case upcoming(page: Int)
     case discoverRecent(page: Int)
     case search(query: String, page: Int)
+    case searchPerson(query: String, page: Int)
 
     // MARK: - Movie Details
     case movieDetails(id: Int)
@@ -126,6 +127,8 @@ enum TMDBEndpoint {
             return "/discover/movie"
         case .search:
             return "/search/movie"
+        case .searchPerson:
+            return "/search/person"
 
         // Movie Details
         case .movieDetails(let id), .movieDetailsFull(let id, _):
@@ -207,6 +210,11 @@ enum TMDBEndpoint {
             items.append(URLQueryItem(name: "page", value: "\(page)"))
             items.append(URLQueryItem(name: "include_adult", value: "false"))
 
+        case .searchPerson(let query, let page):
+            items.append(URLQueryItem(name: "query", value: query))
+            items.append(URLQueryItem(name: "page", value: "\(page)"))
+            items.append(URLQueryItem(name: "include_adult", value: "false"))
+
         // Movie Details with append_to_response
         case .movieDetailsFull(_, let appendOptions):
             let appendValue = appendOptions.map { $0.rawValue }.joined(separator: ",")
@@ -283,6 +291,9 @@ enum TMDBEndpoint {
             return .returnCacheDataElseLoad
         case .personDetails, .personDetailsFull, .personMovieCredits, .personImages:
             // Cache person data for 1 day
+            return .returnCacheDataElseLoad
+        case .searchPerson:
+            // Cache person search results for 1 hour
             return .returnCacheDataElseLoad
         }
     }
@@ -371,6 +382,8 @@ extension TMDBEndpoint {
             return "Person Movie Credits (ID: \(personId))"
         case .personImages(let personId):
             return "Person Images (ID: \(personId))"
+        case .searchPerson(let query, let page):
+            return "Search Person: \"\(query)\" (Page \(page))"
         }
     }
 

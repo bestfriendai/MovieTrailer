@@ -2,58 +2,54 @@
 //  MovieDetailView.swift
 //  MovieTrailer
 //
-//  Created by Daniel Wijono on 11/12/2025.
+//  Complete Movie Details with Cast, Reviews, Similar & More
 //
 
 import SwiftUI
 import Kingfisher
 
 struct MovieDetailView: View {
-    
+
     let movie: Movie
     let isInWatchlist: Bool
     let onWatchlistToggle: () -> Void
     let onClose: () -> Void
     let tmdbService: TMDBService
-    
+    var onMovieTap: ((Movie) -> Void)?
+    var onPersonTap: ((Int) -> Void)?
+
+    // MARK: - State
+
     @State private var showingFullOverview = false
     @State private var trailers: [Video] = []
     @State private var selectedTrailer: Video?
     @State private var showingTrailer = false
-    @State private var isLoadingTrailers = false
     @State private var watchProviders: WatchProviderInfo = .empty
-    @State private var isLoadingProviders = false
-    
+    @State private var credits: Credits = .empty
+    @State private var similarMovies: [Movie] = []
+    @State private var recommendedMovies: [Movie] = []
+    @State private var reviews: [Review] = []
+    @State private var certification: String?
+    @State private var collection: MovieCollection?
+    @State private var keywords: [Keyword] = []
+
+    @State private var isLoading = true
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // Backdrop header - ignores top safe area only
                 backdropHeader
-                
-                // Content - respects all safe areas with proper padding
-                VStack(alignment: .leading, spacing: 24) {
-                    // Title and rating
+
+                VStack(alignment: .leading, spacing: 28) {
                     titleSection
-                    
-                    // Quick info
                     quickInfoSection
-                    
-                    // Overview
                     overviewSection
-                    
-                    // Trailers section with loading state
-                    if isLoadingTrailers {
-                        trailerLoadingSection
-                    } else if !trailers.isEmpty {
+
+                    if !trailers.isEmpty {
                         trailerSection
-                    } else {
-                        noTrailersSection
                     }
 
-                    // Watch Providers (streaming platforms) with loading state
-                    if isLoadingProviders {
-                        providersLoadingSection
-                    } else {
+                    if !watchProviders.isEmpty {
                         WatchProvidersView(
                             providers: watchProviders,
                             movieTitle: movie.title,
@@ -63,139 +59,197 @@ struct MovieDetailView: View {
                                 UIApplication.shared.open(url)
                             }
                         }
-                        .padding(.horizontal, -20) // Offset parent padding for full-width
+                        .padding(.horizontal, -20)
                     }
 
-                    // Genres
+                    if !credits.cast.isEmpty {
+                        castSection
+                    }
+
+                    if !credits.directors.isEmpty || !credits.writers.isEmpty {
+                        crewSection
+                    }
+
                     genresSection
-                    
-                    // Action buttons
+
+                    if !keywords.isEmpty {
+                        keywordsSection
+                    }
+
+                    if collection != nil {
+                        collectionSection
+                    }
+
+                    if !reviews.isEmpty {
+                        reviewsSection
+                    }
+
+                    if !similarMovies.isEmpty {
+                        similarMoviesSection
+                    }
+
+                    if !recommendedMovies.isEmpty {
+                        recommendedMoviesSection
+                    }
+
                     actionButtons
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 20)
             }
         }
         .background(Color.black)
-        .ignoresSafeArea(edges: .top) // Only ignore top for backdrop bleed
+        .ignoresSafeArea(edges: .top)
         .fullScreenCover(isPresented: $showingTrailer) {
             if let trailer = selectedTrailer {
-                TrailerPlayerView(
-                    video: trailer,
-                    onClose: {
-                        #if DEBUG
-                        print("🎬 MovieDetailView: User closed trailer player")
-                        #endif
-                        showingTrailer = false
-                        selectedTrailer = nil
-                    }
-                )
-                #if DEBUG
-                .onAppear {
-                    print("🎬 MovieDetailView: fullScreenCover presenting trailer: \(trailer.name)")
-                }
-                #endif
-            } else {
-                // Fallback error state - should not happen in normal use
-                Color.black.opacity(0.9).ignoresSafeArea()
-                    .overlay(
-                        VStack(spacing: 16) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.system(size: 40))
-                                .foregroundColor(.yellow)
-                            Text("Unable to load trailer")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            Button("Dismiss") {
-                                showingTrailer = false
-                            }
-                            .foregroundColor(.blue)
-                        }
-                    )
+                TrailerPlayerView(video: trailer, onClose: {
+                    showingTrailer = false
+                    selectedTrailer = nil
+                })
             }
         }
-        #if DEBUG
-        .onChange(of: showingTrailer) { newValue in
-            print("🎬 MovieDetailView: showingTrailer changed to: \(newValue)")
-            print("🎬 MovieDetailView: selectedTrailer is: \(selectedTrailer?.name ?? "nil")")
-        }
-        #endif
         .task {
-            await loadTrailers()
-            await loadWatchProviders()
+            await loadAllContent()
         }
     }
-    
+
+    // MARK: - Load Content
+
+    private func loadAllContent() async {
+        isLoading = true
+
+        async let trailersTask: () = loadTrailers()
+        async let providersTask: () = loadWatchProviders()
+        async let creditsTask: () = loadCredits()
+        async let similarTask: () = loadSimilarMovies()
+        async let recommendedTask: () = loadRecommendedMovies()
+        async let reviewsTask: () = loadReviews()
+        async let detailsTask: () = loadFullDetails()
+
+        _ = await (trailersTask, providersTask, creditsTask, similarTask, recommendedTask, reviewsTask, detailsTask)
+
+        isLoading = false
+    }
+
+    private func loadTrailers() async {
+        do {
+            let response = try await tmdbService.fetchVideos(for: movie.id)
+            await MainActor.run { trailers = response.allTrailers }
+        } catch {}
+    }
+
+    private func loadWatchProviders() async {
+        do {
+            let providers = try await tmdbService.fetchWatchProviders(for: movie.id)
+            await MainActor.run { watchProviders = providers }
+        } catch {}
+    }
+
+    private func loadCredits() async {
+        do {
+            let creds = try await tmdbService.fetchCredits(for: movie.id)
+            await MainActor.run { credits = creds }
+        } catch {}
+    }
+
+    private func loadSimilarMovies() async {
+        do {
+            let response = try await tmdbService.fetchSimilarMovies(for: movie.id)
+            await MainActor.run { similarMovies = Array(response.results.prefix(10)) }
+        } catch {}
+    }
+
+    private func loadRecommendedMovies() async {
+        do {
+            let response = try await tmdbService.fetchRecommendations(for: movie.id)
+            await MainActor.run { recommendedMovies = Array(response.results.prefix(10)) }
+        } catch {}
+    }
+
+    private func loadReviews() async {
+        do {
+            let response = try await tmdbService.fetchReviews(for: movie.id)
+            await MainActor.run { reviews = Array(response.results.prefix(5)) }
+        } catch {}
+    }
+
+    private func loadFullDetails() async {
+        do {
+            let details = try await tmdbService.fetchMovieDetailsFull(id: movie.id)
+            await MainActor.run {
+                certification = details.certification
+                if let col = details.belongsToCollection {
+                    // Fetch full collection
+                    Task {
+                        if let fullCollection = try? await tmdbService.fetchCollection(id: col.id) {
+                            collection = fullCollection
+                        }
+                    }
+                }
+                if let kw = details.keywords?.keywords {
+                    keywords = Array(kw.prefix(8))
+                }
+            }
+        } catch {}
+    }
+
     // MARK: - Backdrop Header
 
     private var backdropHeader: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topLeading) {
-                // Backdrop image - constrained to geometry width
                 KFImage(movie.backdropURL)
                     .placeholder {
-                        Rectangle()
-                            .fill(Color(white: 0.15))
+                        Rectangle().fill(Color(white: 0.15))
                     }
                     .resizable()
                     .scaledToFill()
-                    .frame(width: geometry.size.width, height: 300)
+                    .frame(width: geometry.size.width, height: 320)
                     .clipped()
 
-                // Gradient overlay for readability
                 LinearGradient(
-                    colors: [
-                        Color.black.opacity(0.6),
-                        Color.black.opacity(0.2),
-                        Color.clear,
-                        Color.clear,
-                        Color.black.opacity(0.8)
-                    ],
+                    colors: [.black.opacity(0.7), .clear, .black.opacity(0.9)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(width: geometry.size.width, height: 300)
+                .frame(width: geometry.size.width, height: 320)
 
-                // Close button - properly positioned below status bar
-                Button(action: {
-                    Haptics.shared.lightImpact()
-                    onClose()
-                }) {
+                // Close button
+                Button(action: { onClose() }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
                         .frame(width: 32, height: 32)
-                        .background(
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-                        )
+                        .background(Circle().fill(.ultraThinMaterial))
                 }
-                .padding(.top, 60) // Account for status bar + safe area
+                .padding(.top, 60)
                 .padding(.leading, 20)
             }
         }
-        .frame(height: 300)
+        .frame(height: 320)
     }
-    
+
     // MARK: - Title Section
 
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(movie.title)
-                .font(.title.bold())
-                .foregroundColor(.white)
-                .lineLimit(3)
-                .truncationMode(.tail)
-                .minimumScaleFactor(0.85)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Text(movie.title)
+                    .font(.title.bold())
+                    .foregroundColor(.white)
+
+                if let cert = certification, !cert.isEmpty {
+                    Text(cert)
+                        .font(.caption.bold())
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .foregroundColor(.white)
+                }
+            }
 
             HStack(spacing: 16) {
-                // Rating
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")
                         .foregroundColor(.yellow)
@@ -204,8 +258,7 @@ struct MovieDetailView: View {
                         .foregroundColor(.white)
                 }
 
-                // Vote count
-                Text(movie.voteCount > 0 ? "(\(movie.voteCount.formatted()) reviews)" : "Not yet rated")
+                Text("(\(movie.voteCount.formatted()) reviews)")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.5))
             }
@@ -227,7 +280,7 @@ struct MovieDetailView: View {
                 .foregroundColor(.white.opacity(0.6))
         }
     }
-    
+
     // MARK: - Overview
 
     private var overviewSection: some View {
@@ -243,18 +296,141 @@ struct MovieDetailView: View {
 
             if movie.overview.count > 200 {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showingFullOverview.toggle()
-                    }
+                    withAnimation { showingFullOverview.toggle() }
                 } label: {
                     Text(showingFullOverview ? "Show Less" : "Show More")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.blue)
                 }
             }
         }
     }
-    
+
+    // MARK: - Trailers
+
+    private var trailerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Trailers")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(trailers) { trailer in
+                        Button {
+                            selectedTrailer = trailer
+                            showingTrailer = true
+                        } label: {
+                            ZStack {
+                                AsyncImage(url: trailer.youtubeThumbnailURL) { image in
+                                    image.resizable().aspectRatio(16/9, contentMode: .fill)
+                                } placeholder: {
+                                    Rectangle().fill(Color(white: 0.2))
+                                }
+                                .frame(width: 200, height: 112)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                                Image(systemName: "play.circle.fill")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.white)
+                                    .shadow(radius: 4)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Cast Section
+
+    private var castSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Cast")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    ForEach(credits.topBilledCast) { cast in
+                        Button {
+                            onPersonTap?(cast.id)
+                        } label: {
+                            VStack(spacing: 8) {
+                                KFImage(cast.profileURL)
+                                    .placeholder {
+                                        Circle()
+                                            .fill(Color(white: 0.2))
+                                            .overlay(
+                                                Image(systemName: "person.fill")
+                                                    .foregroundColor(.gray)
+                                            )
+                                    }
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 70, height: 70)
+                                    .clipShape(Circle())
+
+                                VStack(spacing: 2) {
+                                    Text(cast.name)
+                                        .font(.caption.bold())
+                                        .foregroundColor(.white)
+                                        .lineLimit(1)
+
+                                    Text(cast.character)
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                }
+                                .frame(width: 80)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Crew Section
+
+    private var crewSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Crew")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            VStack(alignment: .leading, spacing: 8) {
+                if !credits.directors.isEmpty {
+                    HStack {
+                        Text("Director")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .frame(width: 80, alignment: .leading)
+                        Text(credits.directors.map(\.name).joined(separator: ", "))
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.white)
+                    }
+                }
+
+                if !credits.writers.isEmpty {
+                    HStack {
+                        Text("Writers")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .frame(width: 80, alignment: .leading)
+                        Text(credits.writers.prefix(3).map(\.name).joined(separator: ", "))
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .padding()
+            .background(Color(white: 0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
     // MARK: - Genres
 
     private var genresSection: some View {
@@ -265,294 +441,331 @@ struct MovieDetailView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    ForEach(Genre.names(for: movie.genreIds), id: \.self) { genreName in
-                        Text(genreName)
+                    ForEach(Genre.names(for: movie.genreIds), id: \.self) { name in
+                        Text(name)
                             .font(.subheadline.weight(.medium))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(
-                                Capsule()
-                                    .fill(Color.white.opacity(0.1))
-                            )
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-                            )
-                            .foregroundColor(.primary)
+                            .background(Capsule().fill(Color.white.opacity(0.1)))
+                            .foregroundColor(.white)
                     }
                 }
             }
         }
     }
-    
+
+    // MARK: - Keywords
+
+    private var keywordsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Keywords")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            DetailFlowLayout(spacing: 8) {
+                ForEach(keywords) { keyword in
+                    Text(keyword.name)
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.2))
+                        .clipShape(Capsule())
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+    }
+
+    // MARK: - Collection
+
+    private var collectionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let col = collection {
+                Text("Part of \(col.name)")
+                    .font(.title3.bold())
+                    .foregroundColor(.white)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(col.parts.sorted { ($0.releaseDate ?? "") < ($1.releaseDate ?? "") }) { part in
+                            Button {
+                                onMovieTap?(part.toMovie())
+                            } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    KFImage(part.posterURL)
+                                        .placeholder {
+                                            Rectangle().fill(Color(white: 0.15))
+                                        }
+                                        .resizable()
+                                        .aspectRatio(2/3, contentMode: .fill)
+                                        .frame(width: 100, height: 150)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(part.id == movie.id ? Color.blue : Color.clear, lineWidth: 2)
+                                        )
+
+                                    Text(part.title)
+                                        .font(.caption.bold())
+                                        .foregroundColor(.white)
+                                        .lineLimit(2)
+                                        .frame(width: 100, alignment: .leading)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Reviews
+
+    private var reviewsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Reviews")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            VStack(spacing: 12) {
+                ForEach(reviews.prefix(3)) { review in
+                    DetailReviewCard(review: review)
+                }
+            }
+        }
+    }
+
+    // MARK: - Similar Movies
+
+    private var similarMoviesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Similar Movies")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(similarMovies) { similarMovie in
+                        DetailMoviePosterCard(movie: similarMovie) {
+                            onMovieTap?(similarMovie)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Recommended Movies
+
+    private var recommendedMoviesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Recommended")
+                .font(.title3.bold())
+                .foregroundColor(.white)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(recommendedMovies) { recMovie in
+                        DetailMoviePosterCard(movie: recMovie) {
+                            onMovieTap?(recMovie)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Action Buttons
 
     private var actionButtons: some View {
-        VStack(spacing: 12) {
-            // Watchlist button
-            Button(action: {
-                Haptics.shared.mediumImpact()
-                onWatchlistToggle()
-            }) {
-                HStack(spacing: 12) {
-                    Image(systemName: isInWatchlist ? "checkmark" : "plus")
-                        .font(.system(size: 16, weight: .bold))
+        Button(action: { onWatchlistToggle() }) {
+            HStack(spacing: 12) {
+                Image(systemName: isInWatchlist ? "checkmark" : "plus")
+                    .font(.system(size: 16, weight: .bold))
 
-                    Text(isInWatchlist ? "In Watchlist" : "Add to Watchlist")
-                        .font(.headline)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(isInWatchlist ? Color.white.opacity(0.15) : Color.white)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(isInWatchlist ? 0.3 : 0), lineWidth: 1)
-                )
-                .foregroundColor(isInWatchlist ? .white : .black)
+                Text(isInWatchlist ? "In Watchlist" : "Add to Watchlist")
+                    .font(.headline)
             }
-            .buttonStyle(ScaleButtonStyle())
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isInWatchlist ? Color.white.opacity(0.15) : Color.white)
+            )
+            .foregroundColor(isInWatchlist ? .white : .black)
         }
         .padding(.top, 8)
     }
-    
-    // MARK: - Loading Sections
-
-    private var trailerLoadingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Trailers")
-                .font(.title3.bold())
-                .foregroundColor(.white)
-
-            HStack(spacing: 12) {
-                ForEach(0..<2, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.1))
-                        .frame(width: 200, height: 112)
-                        .overlay(
-                            ProgressView()
-                                .tint(.white.opacity(0.5))
-                        )
-                }
-            }
-        }
-    }
-
-    private var providersLoadingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Where to Watch")
-                .font(.title3.bold())
-                .foregroundColor(.white)
-
-            HStack(spacing: 12) {
-                ForEach(0..<4, id: \.self) { _ in
-                    Circle()
-                        .fill(Color.white.opacity(0.1))
-                        .frame(width: 50, height: 50)
-                }
-                Spacer()
-            }
-            .padding()
-            .background(Color.white.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .padding(.horizontal, -20)
-    }
-
-    private var noTrailersSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Trailers")
-                .font(.title3.bold())
-                .foregroundColor(.white)
-
-            HStack(spacing: 12) {
-                Image(systemName: "film.stack")
-                    .font(.title2)
-                    .foregroundColor(.white.opacity(0.4))
-
-                Text("No trailers available yet")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.5))
-
-                Spacer()
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.05))
-            )
-        }
-    }
-
-    // MARK: - Trailer Section
-
-    private var trailerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Trailers")
-                .font(.title3.bold())
-                .foregroundColor(.white)
-            
-            if trailers.count == 1 {
-                // Single trailer - large button
-                Button {
-                    #if DEBUG
-                    print("🎬 MovieDetailView: User tapped single trailer button")
-                    print("   Trailer: \(trailers[0].name)")
-                    print("   Video key: \(trailers[0].key)")
-                    #endif
-                    selectedTrailer = trailers[0]
-                    showingTrailer = true
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "play.circle.fill")
-                            .font(.title2)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Watch Trailer")
-                                .font(.headline)
-                            Text(trailers[0].name)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(.ultraThinMaterial)
-                    )
-                }
-                .buttonStyle(ScaleButtonStyle())
-            } else {
-                // Multiple trailers - horizontal scroll
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(trailers) { trailer in
-                            TrailerCardView(
-                                trailer: trailer,
-                                onTap: {
-                                    #if DEBUG
-                                    print("🎬 MovieDetailView: User tapped trailer card - \(trailer.name)")
-                                    #endif
-                                    selectedTrailer = trailer
-                                    showingTrailer = true
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func loadTrailers() async {
-        #if DEBUG
-        print("🎬 MovieDetailView: Starting to load trailers for movie ID: \(movie.id)")
-        #endif
-        isLoadingTrailers = true
-        defer { isLoadingTrailers = false }
-
-        do {
-            let videoResponse = try await tmdbService.fetchVideos(for: movie.id)
-            await MainActor.run {
-                trailers = videoResponse.allTrailers
-                #if DEBUG
-                print("🎬 MovieDetailView: Successfully loaded \(trailers.count) trailers")
-                #endif
-            }
-        } catch {
-            #if DEBUG
-            print("⚠️ MovieDetailView: Failed to load trailers: \(error)")
-            #endif
-            // Silently fail - trailers are optional
-        }
-    }
-
-    private func loadWatchProviders() async {
-        isLoadingProviders = true
-        defer { isLoadingProviders = false }
-
-        do {
-            let providers = try await tmdbService.fetchWatchProviders(for: movie.id)
-            await MainActor.run {
-                watchProviders = providers
-            }
-        } catch {
-            // Silently fail - watch providers are optional
-        }
-    }
 }
 
-// MARK: - Trailer Card View
+// MARK: - Detail Movie Poster Card
 
-private struct TrailerCardView: View {
-    let trailer: Video
+struct DetailMoviePosterCard: View {
+    let movie: Movie
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Thumbnail with play icon overlay
-                ZStack {
-                    AsyncImage(url: trailer.youtubeThumbnailURL) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(16/9, contentMode: .fill)
-                    } placeholder: {
+            VStack(alignment: .leading, spacing: 6) {
+                KFImage(movie.posterURL)
+                    .placeholder {
                         Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.gray.opacity(0.3), .gray.opacity(0.1)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .aspectRatio(16/9, contentMode: .fill)
+                            .fill(Color(white: 0.15))
+                            .overlay(Image(systemName: "film").foregroundColor(.gray))
                     }
-                    .frame(width: 200, height: 112)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    
-                    // Play button overlay
-                    Image(systemName: "play.circle.fill")
-                        .font(.largeTitle)
+                    .resizable()
+                    .aspectRatio(2/3, contentMode: .fill)
+                    .frame(width: 120, height: 180)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(movie.title)
+                        .font(.caption.bold())
                         .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                        .lineLimit(2)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.yellow)
+                        Text(movie.formattedRating)
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                    }
                 }
-                
-                // Trailer name
-                Text(trailer.name)
-                    .font(.caption.bold())
-                    .lineLimit(2)
-                    .frame(width: 200, alignment: .leading)
+                .frame(width: 120, alignment: .leading)
             }
         }
-        .buttonStyle(PlainButtonStyle())
-        .accessibilityLabel("Watch \(trailer.name)")
-        .accessibilityHint("Opens video player")
+        .buttonStyle(.plain)
     }
 }
 
-// MARK: - Preview
+// MARK: - Detail Review Card
 
-#if DEBUG
-struct MovieDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        MovieDetailView(
-            movie: .sample,
-            isInWatchlist: false,
-            onWatchlistToggle: {},
-            onClose: {},
-            tmdbService: .shared
-        )
+struct DetailReviewCard: View {
+    let review: Review
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                // Avatar
+                if let url = review.avatarURL {
+                    KFImage(url)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                } else {
+                    Circle()
+                        .fill(Color.blue.opacity(0.3))
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            Text(review.authorDetails?.initials ?? "?")
+                                .font(.caption.bold())
+                                .foregroundColor(.blue)
+                        )
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(review.author)
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+
+                    HStack(spacing: 4) {
+                        if let rating = review.rating {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.yellow)
+                            Text(String(format: "%.1f", rating))
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+
+                        if let time = review.timeAgo {
+                            Text("• \(time)")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+
+                Spacer()
+            }
+
+            Text(expanded ? review.content : review.truncatedContent)
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.8))
+                .lineLimit(expanded ? nil : 4)
+
+            if review.isLongReview {
+                Button {
+                    withAnimation { expanded.toggle() }
+                } label: {
+                    Text(expanded ? "Show Less" : "Read More")
+                        .font(.caption.bold())
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .padding()
+        .background(Color(white: 0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
-#endif
+
+// MARK: - Detail Flow Layout for Keywords
+
+struct DetailFlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = FlowResult(in: proposal.width ?? 0, subviews: subviews, spacing: spacing)
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = FlowResult(in: bounds.width, subviews: subviews, spacing: spacing)
+        for (index, subview) in subviews.enumerated() {
+            subview.place(at: CGPoint(x: bounds.minX + result.positions[index].x,
+                                       y: bounds.minY + result.positions[index].y),
+                          proposal: .unspecified)
+        }
+    }
+
+    struct FlowResult {
+        var size: CGSize = .zero
+        var positions: [CGPoint] = []
+
+        init(in maxWidth: CGFloat, subviews: Subviews, spacing: CGFloat) {
+            var x: CGFloat = 0
+            var y: CGFloat = 0
+            var rowHeight: CGFloat = 0
+
+            for subview in subviews {
+                let size = subview.sizeThatFits(.unspecified)
+                if x + size.width > maxWidth && x > 0 {
+                    x = 0
+                    y += rowHeight + spacing
+                    rowHeight = 0
+                }
+                positions.append(CGPoint(x: x, y: y))
+                rowHeight = max(rowHeight, size.height)
+                x += size.width + spacing
+            }
+
+            size = CGSize(width: maxWidth, height: y + rowHeight)
+        }
+    }
+}
+
+#Preview {
+    MovieDetailView(
+        movie: .sample,
+        isInWatchlist: false,
+        onWatchlistToggle: {},
+        onClose: {},
+        tmdbService: .shared
+    )
+}

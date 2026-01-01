@@ -46,13 +46,15 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
         case home = 0
         case swipe = 1
         case search = 2
-        case library = 3
+        case chat = 3
+        case library = 4
 
         var title: String {
             switch self {
             case .home: return "Home"
             case .swipe: return "Swipe"
             case .search: return "Search"
+            case .chat: return "Chat"
             case .library: return "Library"
             }
         }
@@ -62,6 +64,7 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
             case .home: return "house"
             case .swipe: return "rectangle.stack"
             case .search: return "magnifyingglass"
+            case .chat: return "bubble.left.and.bubble.right"
             case .library: return "books.vertical"
             }
         }
@@ -71,6 +74,7 @@ final class TabCoordinator: ObservableObject, TabCoordinatorProtocol {
             case .home: return "house.fill"
             case .swipe: return "rectangle.stack.fill"
             case .search: return "magnifyingglass"
+            case .chat: return "bubble.left.and.bubble.right.fill"
             case .library: return "books.vertical.fill"
             }
         }
@@ -137,17 +141,29 @@ struct TabCoordinatorView: View {
                 }
                 .tag(2)
 
+            // Chat Tab
+            coordinator.chatTabView
+                .tabItem {
+                    Label(
+                        TabCoordinator.Tab.chat.title,
+                        systemImage: selectedTab == 3
+                            ? TabCoordinator.Tab.chat.iconFilled
+                            : TabCoordinator.Tab.chat.icon
+                    )
+                }
+                .tag(3)
+
             // Library Tab
             coordinator.libraryTabView
                 .tabItem {
                     Label(
                         TabCoordinator.Tab.library.title,
-                        systemImage: selectedTab == 3
+                        systemImage: selectedTab == 4
                             ? TabCoordinator.Tab.library.iconFilled
                             : TabCoordinator.Tab.library.icon
                     )
                 }
-                .tag(3)
+                .tag(4)
         }
         .tint(.white)
         .preferredColorScheme(.dark)
@@ -232,6 +248,12 @@ extension TabCoordinator {
                 self.showMovieDetail(movie)
             }
         )
+    }
+
+    var chatTabView: some View {
+        ChatView(onMovieTap: { movie in
+            self.showMovieDetail(movie)
+        })
     }
 
     var libraryTabView: some View {

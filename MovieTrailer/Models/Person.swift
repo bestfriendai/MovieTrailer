@@ -334,6 +334,71 @@ struct ExternalIds: Codable {
     }
 }
 
+// MARK: - Person Search Result
+
+/// Person search result from TMDB
+struct PersonSearchResult: Codable, Identifiable {
+    let id: Int
+    let name: String
+    let profilePath: String?
+    let knownForDepartment: String?
+    let popularity: Double
+    let knownFor: [KnownForItem]?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, popularity
+        case profilePath = "profile_path"
+        case knownForDepartment = "known_for_department"
+        case knownFor = "known_for"
+    }
+
+    var profileURL: URL? {
+        guard let path = profilePath else { return nil }
+        return URL(string: "https://image.tmdb.org/t/p/w185\(path)")
+    }
+
+    var isActor: Bool {
+        knownForDepartment?.lowercased() == "acting"
+    }
+
+    var isDirector: Bool {
+        knownForDepartment?.lowercased() == "directing"
+    }
+}
+
+/// Known for item in person search
+struct KnownForItem: Codable, Identifiable {
+    let id: Int
+    let title: String?
+    let name: String?
+    let mediaType: String?
+    let posterPath: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, name
+        case mediaType = "media_type"
+        case posterPath = "poster_path"
+    }
+
+    var displayTitle: String {
+        title ?? name ?? "Unknown"
+    }
+}
+
+/// Person search response
+struct PersonSearchResponse: Codable {
+    let page: Int
+    let results: [PersonSearchResult]
+    let totalPages: Int
+    let totalResults: Int
+
+    enum CodingKeys: String, CodingKey {
+        case page, results
+        case totalPages = "total_pages"
+        case totalResults = "total_results"
+    }
+}
+
 // MARK: - Preview Helpers
 
 #if DEBUG

@@ -461,4 +461,87 @@ class FilterViewModel: ObservableObject {
             userDefaults.set(data, forKey: presetsKey)
         }
     }
+
+    /// Convert FilterState to TMDB DiscoverFilters for API calls
+    func toDiscoverFilters() -> DiscoverFilters {
+        filterState.toDiscoverFilters()
+    }
+}
+
+// MARK: - FilterState to DiscoverFilters Conversion
+
+extension FilterState {
+    /// Convert FilterState to TMDB DiscoverFilters for API calls
+    func toDiscoverFilters() -> DiscoverFilters {
+        var filters = DiscoverFilters()
+
+        // Genres
+        if !includedGenres.isEmpty {
+            filters.genres = includedGenres.map { $0.rawValue }
+        }
+        if !excludedGenres.isEmpty {
+            filters.withoutGenres = excludedGenres.map { $0.rawValue }
+        }
+
+        // Year range
+        if releaseYearStart > 1900 {
+            filters.yearMin = releaseYearStart
+        }
+        if releaseYearEnd < Calendar.current.component(.year, from: Date()) {
+            filters.yearMax = releaseYearEnd
+        }
+
+        // Rating
+        if minimumRating > 0 {
+            filters.voteAverageMin = minimumRating
+        }
+
+        // Vote count for quality filter
+        if minimumVotes > 0 {
+            filters.voteCountMin = minimumVotes
+        } else {
+            // Default minimum votes for quality
+            filters.voteCountMin = 50
+        }
+
+        // Runtime
+        if let range = runtimeFilter.range {
+            if range.lowerBound > 0 {
+                filters.runtimeMin = range.lowerBound
+            }
+            if range.upperBound < 999 {
+                filters.runtimeMax = range.upperBound
+            }
+        }
+
+        // Streaming services
+        if !selectedServices.isEmpty {
+            filters.withWatchProviders = selectedServices.map { $0.providerId }
+            filters.watchRegion = "US"
+            if includeRentBuy {
+                filters.watchMonetizationType = nil // Include all types
+            } else {
+                filters.watchMonetizationType = .flatrate // Subscription only
+            }
+        }
+
+        // Sort
+        switch sortBy {
+        case .popularity:
+            filters.sortBy = .popularityDesc
+        case .rating:
+            filters.sortBy = .voteAverageDesc
+        case .releaseDate:
+            filters.sortBy = .releaseDateDesc
+        case .title:
+            filters.sortBy = .originalTitleAsc
+        case .voteCount:
+            filters.sortBy = .voteCountDesc
+        }
+
+        // Adult content
+        filters.includeAdult = includeAdult
+
+        return filters
+    }
 }

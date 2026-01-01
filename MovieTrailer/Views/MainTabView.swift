@@ -59,9 +59,17 @@ struct MainTabView: View {
             swipeTab
         case .search:
             searchTab
+        case .chat:
+            chatTab
         case .library:
             libraryTab
         }
+    }
+
+    // MARK: - Chat Tab
+
+    private var chatTab: some View {
+        ChatView(onMovieTap: onMovieTap)
     }
 
     // MARK: - Home Tab

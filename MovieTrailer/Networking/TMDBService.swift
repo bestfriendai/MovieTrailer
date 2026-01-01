@@ -237,6 +237,18 @@ actor TMDBService {
         )
     }
 
+    /// Search person (actors, directors) by name
+    func searchPerson(query: String, page: Int = 1) async throws -> PersonSearchResponse {
+        guard !query.isEmpty else {
+            return PersonSearchResponse(page: 1, results: [], totalPages: 0, totalResults: 0)
+        }
+
+        return try await request(
+            endpoint: .searchPerson(query: query, page: page),
+            responseType: PersonSearchResponse.self
+        )
+    }
+
     /// Fetch movie details by ID
     func fetchMovieDetails(id: Int) async throws -> Movie {
         try await request(
