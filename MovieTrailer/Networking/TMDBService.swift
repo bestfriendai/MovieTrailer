@@ -118,7 +118,7 @@ actor TMDBService {
                 let decodedResponse = try decoder.decode(T.self, from: data)
                 return decodedResponse
             } catch {
-                throw NetworkError.decodingError(error)
+                throw NetworkError.decodingError(error.localizedDescription)
             }
         } catch let error as NetworkError {
             // Already a NetworkError, check if retryable
@@ -133,7 +133,7 @@ actor TMDBService {
             throw error
         } catch {
             // Convert to NetworkError and check if retryable
-            let networkError = NetworkError.networkError(error)
+            let networkError = NetworkError.networkError(error.localizedDescription)
             if networkError.isRetryable && retryCount < maxRetries {
                 return try await retryRequest(
                     endpoint: endpoint,

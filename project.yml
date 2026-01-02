@@ -18,6 +18,15 @@ packages:
   Kingfisher:
     url: https://github.com/onevcat/Kingfisher
     from: "7.0.0"
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: "11.0.0"
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: "8.0.0"
+  GenerativeAI:
+    url: https://github.com/google/generative-ai-swift
+    from: "0.5.0"
 
 targets:
   MovieTrailer:
@@ -31,6 +40,16 @@ targets:
           - "**/Info.plist"
     dependencies:
       - package: Kingfisher
+      - package: Firebase
+        products:
+          - FirebaseAuth
+          - FirebaseFirestore
+      - package: GoogleSignIn
+        products:
+          - GoogleSignIn
+          - GoogleSignInSwift
+      - package: GenerativeAI
+        product: GoogleGenerativeAI
       - target: MovieTrailerWidgets
         embed: true
     settings:
@@ -56,6 +75,7 @@ targets:
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
         TMDB_API_KEY: f92702575f616766a4eff39c706415cc
+        GEMINI_API_KEY: AIzaSyDIfadSE-o_PFQx__qw4wRXyj141MRg8-4
         CFBundleURLTypes:
           - CFBundleURLName: com.movietrailer
             CFBundleURLSchemes:

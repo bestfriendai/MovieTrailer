@@ -8,16 +8,17 @@
 import Foundation
 
 /// Custom error types for network operations
-enum NetworkError: LocalizedError {
+enum NetworkError: LocalizedError, Equatable {
     case invalidURL
     case invalidResponse
     case httpError(statusCode: Int)
-    case decodingError(Error)
-    case networkError(Error)
+    case decodingError(String)
+    case networkError(String)
     case noData
     case unauthorized
     case rateLimitExceeded
     case serverError
+    case timeout
     case unknown
     
     // MARK: - LocalizedError
@@ -31,9 +32,9 @@ enum NetworkError: LocalizedError {
         case .httpError(let statusCode):
             return "HTTP error: \(statusCode)"
         case .decodingError(let error):
-            return "Failed to decode response: \(error.localizedDescription)"
+            return "Failed to decode response: \(error)"
         case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
+            return "Network error: \(error)"
         case .noData:
             return "No data received from server"
         case .unauthorized:
@@ -42,6 +43,8 @@ enum NetworkError: LocalizedError {
             return "Rate limit exceeded - please try again later"
         case .serverError:
             return "Server error - please try again later"
+        case .timeout:
+            return "Request timed out"
         case .unknown:
             return "An unknown error occurred"
         }
@@ -67,6 +70,8 @@ enum NetworkError: LocalizedError {
             return "You have exceeded the API rate limit"
         case .serverError:
             return "The server encountered an internal error"
+        case .timeout:
+            return "The request took too long to complete"
         case .unknown:
             return "The cause of the error is unknown"
         }
@@ -98,6 +103,8 @@ enum NetworkError: LocalizedError {
             return "Please wait a few minutes before trying again"
         case .serverError:
             return "Please try again in a few minutes"
+        case .timeout:
+            return "Please check your connection and try again"
         case .unknown:
             return "Please try again or contact support"
         }
@@ -128,6 +135,8 @@ enum NetworkError: LocalizedError {
             return "Too many requests"
         case .serverError:
             return "Server error"
+        case .timeout:
+            return "Request timed out"
         }
     }
     

@@ -67,7 +67,7 @@ final class PersonDetailViewModel: ObservableObject {
             self.error = networkError
             isLoading = false
         } catch {
-            self.error = .networkError(error)
+            self.error = .networkError(error.localizedDescription)
             isLoading = false
         }
     }

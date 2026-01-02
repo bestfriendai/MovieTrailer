@@ -2,9 +2,6 @@
 //  Haptics.swift
 //  MovieTrailer
 //
-//  Created by Claude Code on 28/12/2025.
-//  Comprehensive haptic feedback system
-//
 
 import SwiftUI
 import UIKit
@@ -20,13 +17,13 @@ final class Haptics {
 
     // MARK: - Generators
 
-    private let lightGenerator = UIImpactFeedbackGenerator(style: .light)
-    private let mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
-    private let heavyGenerator = UIImpactFeedbackGenerator(style: .heavy)
-    private let softGenerator = UIImpactFeedbackGenerator(style: .soft)
-    private let rigidGenerator = UIImpactFeedbackGenerator(style: .rigid)
-    private let selectionGenerator = UISelectionFeedbackGenerator()
-    private let notificationGenerator = UINotificationFeedbackGenerator()
+    private lazy var lightGenerator = UIImpactFeedbackGenerator(style: .light)
+    private lazy var mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
+    private lazy var heavyGenerator = UIImpactFeedbackGenerator(style: .heavy)
+    private lazy var softGenerator = UIImpactFeedbackGenerator(style: .soft)
+    private lazy var rigidGenerator = UIImpactFeedbackGenerator(style: .rigid)
+    private lazy var selectionGenerator = UISelectionFeedbackGenerator()
+    private lazy var notificationGenerator = UINotificationFeedbackGenerator()
 
     // MARK: - Initialization
 
@@ -34,7 +31,7 @@ final class Haptics {
         prepareGenerators()
     }
 
-    private func prepareGenerators() {
+    func prepareGenerators() {
         lightGenerator.prepare()
         mediumGenerator.prepare()
         heavyGenerator.prepare()
@@ -46,199 +43,206 @@ final class Haptics {
 
     // MARK: - Impact Feedback
 
-    /// Light tap feedback
     func light() {
         lightGenerator.impactOccurred()
     }
 
-    /// Medium tap feedback
     func medium() {
         mediumGenerator.impactOccurred()
     }
 
-    /// Heavy tap feedback
     func heavy() {
         heavyGenerator.impactOccurred()
     }
 
-    /// Soft tap feedback
     func soft() {
         softGenerator.impactOccurred()
     }
 
-    /// Rigid tap feedback
     func rigid() {
         rigidGenerator.impactOccurred()
     }
 
+    func impact(intensity: CGFloat) {
+        mediumGenerator.impactOccurred(intensity: intensity)
+    }
+
     // MARK: - Selection Feedback
 
-    /// Selection changed feedback
     func selectionChanged() {
         selectionGenerator.selectionChanged()
     }
 
     // MARK: - Notification Feedback
 
-    /// Success notification
     func success() {
         notificationGenerator.notificationOccurred(.success)
     }
 
-    /// Warning notification
     func warning() {
         notificationGenerator.notificationOccurred(.warning)
     }
 
-    /// Error notification
     func error() {
         notificationGenerator.notificationOccurred(.error)
     }
 
     // MARK: - Contextual Haptics
 
-    /// Tab bar item tapped
     func tabTapped() {
-        light()
+        selectionChanged()
     }
 
-    /// Card tapped
+    func changedTab() {
+        selectionChanged()
+    }
+
     func cardTapped() {
         medium()
     }
 
-    /// Button tapped
     func buttonTapped() {
+        light()
+    }
+
+    func buttonPressed() {
+        light()
+    }
+
+    func pullRefresh() {
         medium()
     }
 
-    /// Pull to refresh triggered
-    func pullRefresh() {
-        soft()
+    func pulledToRefresh() {
+        medium()
     }
 
-    /// Swipe right (like)
     func swipeLike() {
         success()
     }
 
-    /// Swipe left (skip)
     func swipeSkip() {
         light()
     }
 
-    /// Swipe up (super like)
     func swipeSuperLike() {
         heavy()
     }
 
-    /// Swipe down (seen)
     func swipeSeen() {
         medium()
     }
 
-    /// Added to watchlist
+    func swipeAction() {
+        rigid()
+    }
+
     func addedToWatchlist() {
         success()
     }
 
-    /// Removed from watchlist
     func removedFromWatchlist() {
-        light()
+        rigid()
     }
 
-    /// Long press activated
     func longPress() {
         heavy()
     }
 
-    /// Slider value changed
+    func longPressTriggered() {
+        heavy()
+    }
+
     func sliderChanged() {
         selectionChanged()
     }
 
-    /// Toggle switched
     func toggleSwitched() {
         medium()
     }
 
-    /// Sheet presented
     func sheetPresented() {
         soft()
     }
 
-    /// Sheet dismissed
     func sheetDismissed() {
         light()
     }
 
-    /// Error occurred
+    func closedModal() {
+        light()
+    }
+
     func errorOccurred() {
         error()
     }
 
-    /// Action completed successfully
     func actionCompleted() {
         success()
     }
 
-    /// Category filter changed
     func filterChanged() {
         selectionChanged()
     }
 
-    /// Trailer started playing
     func trailerStarted() {
         medium()
     }
 
-    /// Undo action triggered
+    func playedTrailer() {
+        medium()
+    }
+
     func undoAction() {
         soft()
     }
 
-    // MARK: - Aliases for convenience
+    func openedDetail() {
+        medium()
+    }
 
-    /// Alias for light impact
+    func searchResultTapped() {
+        soft()
+    }
+
+    // MARK: - Aliases
+
     func lightImpact() {
         light()
     }
 
-    /// Alias for medium impact
     func mediumImpact() {
         medium()
     }
 
-    /// Alias for heavy impact
     func heavyImpact() {
         heavy()
     }
 
-    /// Alias for swipe right
+    func softImpact() {
+        soft()
+    }
+
+    func rigidImpact() {
+        rigid()
+    }
+
     func swipeRight() {
         swipeLike()
     }
 
-    /// Alias for swipe left
     func swipeLeft() {
         swipeSkip()
     }
 
-    /// Alias for super like
     func superLike() {
         swipeSuperLike()
-    }
-
-    /// Alias for pulled to refresh
-    func pulledToRefresh() {
-        pullRefresh()
     }
 }
 
 // MARK: - View Extension for Haptic Modifiers
 
 extension View {
-    /// Add haptic feedback on tap
     func hapticOnTap(_ type: HapticType = .medium) -> some View {
         self.simultaneousGesture(
             TapGesture()
@@ -257,6 +261,22 @@ extension View {
                 }
         )
     }
+
+    func hapticFeedback(_ style: HapticType = .light) -> some View {
+        hapticOnTap(style)
+    }
+
+    func buttonHaptic() -> some View {
+        hapticFeedback(.light)
+    }
+
+    func cardHaptic() -> some View {
+        hapticFeedback(.medium)
+    }
+
+    func selectionHaptic() -> some View {
+        hapticFeedback(.selection)
+    }
 }
 
 enum HapticType {
@@ -270,3 +290,7 @@ enum HapticType {
     case error
     case selection
 }
+
+// MARK: - Backwards Compatibility
+
+typealias HapticManager = Haptics

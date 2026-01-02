@@ -31,6 +31,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>GEMINI_API_KEY</key>
+	<string>AIzaSyDIfadSE-o_PFQx__qw4wRXyj141MRg8-4</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -66,18 +68,12 @@
 			</dict>
 		</dict>
 	</dict>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>MovieTrailer uses speech recognition for voice search to help you find movies hands-free.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>MovieTrailer needs microphone access for voice search functionality.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
 	<true/>
 	<key>TMDB_API_KEY</key>
 	<string>f92702575f616766a4eff39c706415cc</string>
-	<key>GEMINI_API_KEY</key>
-	<string>AIzaSyDIfadSE-o_PFQx__qw4wRXyj141MRg8-4</string>
 	<key>UIApplicationShortcutItems</key>
 	<array>
 		<dict>

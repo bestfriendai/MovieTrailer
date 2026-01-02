@@ -178,6 +178,7 @@ extension View {
 
 // MARK: - Dependency Container
 
+@MainActor
 struct DependencyContainer {
     let tmdbService: TMDBService
     let watchlistManager: WatchlistManager

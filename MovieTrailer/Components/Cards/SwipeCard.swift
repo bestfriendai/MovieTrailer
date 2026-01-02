@@ -37,7 +37,7 @@ struct SwipeCard: View {
     @State private var rotation: Double = 0
     @State private var glowOpacity: Double = 0
     @State private var cardOpacity: Double = 0
-    @State private var cardScale: Double = 0.9
+    @State private var cardScale: Double = 0.95
     @GestureState private var isDragging = false
 
     private let swipeThreshold: CGFloat = 100
@@ -97,39 +97,20 @@ struct SwipeCard: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Main card
                 cardBody(size: geometry.size)
-
-                // Swipe indicator overlay
                 swipeIndicatorOverlay
             }
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0.3),
-                                .white.opacity(0.1),
-                                .clear,
-                                .clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.5
-                    )
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
             )
-            // Dynamic glow based on swipe direction
-            .shadow(color: glowColor.opacity(glowOpacity * 0.8), radius: 40, x: 0, y: 0)
-            // Depth shadow
-            .shadow(color: .black.opacity(0.5), radius: 30, x: 0, y: 20)
-            .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+            .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
             .offset(offset)
             .rotationEffect(.degrees(rotation))
-            .scaleEffect(isDragging ? 1.03 : cardScale)
+            .scaleEffect(isDragging ? 1.02 : cardScale)
             .opacity(cardOpacity)
-            .animation(.interactiveSpring(response: 0.35, dampingFraction: 0.75), value: isDragging)
+            .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.8), value: isDragging)
             .gesture(isTopCard ? dragGesture : nil)
             .onTapGesture {
                 guard isTopCard else { return }
@@ -137,13 +118,13 @@ struct SwipeCard: View {
                 onTap()
             }
             .onAppear {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                withAnimation(.easeOut(duration: 0.3)) {
                     cardOpacity = 1
                     cardScale = 1
                 }
             }
         }
-        .aspectRatio(0.65, contentMode: .fit)
+        .aspectRatio(0.67, contentMode: .fit)
         // Accessibility support
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityDescription)
@@ -209,8 +190,6 @@ struct SwipeCard: View {
         }
     }
 
-    // MARK: - Parallax Offset
-
     private var parallaxOffset: CGSize {
         CGSize(
             width: offset.width * 0.05,
@@ -256,56 +235,54 @@ struct SwipeCard: View {
 
     private var cinematicGradient: some View {
         ZStack {
-            // Top vignette
             VStack {
                 LinearGradient(
                     stops: [
-                        .init(color: .black.opacity(0.7), location: 0),
-                        .init(color: .black.opacity(0.3), location: 0.5),
+                        .init(color: .black.opacity(0.6), location: 0),
+                        .init(color: .black.opacity(0.2), location: 0.6),
                         .init(color: .clear, location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 150)
+                .frame(height: 120)
 
                 Spacer()
             }
 
-            // Bottom gradient - rich cinematic
             VStack {
                 Spacer()
 
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .black.opacity(0.4), location: 0.3),
-                        .init(color: .black.opacity(0.85), location: 0.7),
-                        .init(color: .black.opacity(0.95), location: 1)
+                        .init(color: .black.opacity(0.3), location: 0.15),
+                        .init(color: .black.opacity(0.7), location: 0.5),
+                        .init(color: .black.opacity(0.92), location: 0.8),
+                        .init(color: .black.opacity(0.98), location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 320)
+                .frame(height: 280)
             }
 
-            // Side vignettes
-            HStack {
+            HStack(spacing: 0) {
                 LinearGradient(
-                    colors: [.black.opacity(0.3), .clear],
+                    colors: [.black.opacity(0.25), .clear],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-                .frame(width: 60)
+                .frame(width: 50)
 
                 Spacer()
 
                 LinearGradient(
-                    colors: [.clear, .black.opacity(0.3)],
+                    colors: [.clear, .black.opacity(0.25)],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-                .frame(width: 60)
+                .frame(width: 50)
             }
         }
     }
@@ -391,53 +368,48 @@ struct SwipeCard: View {
     // MARK: - Bottom Info Panel
 
     private var bottomInfoPanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Genre pills - moved to top for better visual hierarchy
-            if let genres = movie.genreNames, !genres.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(genres.prefix(3), id: \.self) { genre in
-                            genrePill(genre)
-                        }
-                    }
-                }
-            }
-
+        VStack(alignment: .leading, spacing: 16) {
             if let reason = recommendationReason {
                 reasonBadge(reason)
             }
 
-            // Title with year inline
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(movie.title)
-                    .font(.system(size: 26, weight: .bold, design: .default))
+                    .font(.system(size: 30, weight: .bold, design: .default))
                     .foregroundColor(.white)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.75)
+                    .shadow(color: .black.opacity(0.8), radius: 8, x: 0, y: 2)
 
-                if let year = movie.releaseDate?.prefix(4) {
-                    Text("(\(year))")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white.opacity(0.5))
+                HStack(spacing: 12) {
+                    if let year = movie.releaseDate?.prefix(4) {
+                        Text(String(year))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+
+                    if let genres = movie.genreNames, !genres.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.4))
+                        Text(genres.prefix(2).joined(separator: ", "))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
                 }
             }
-            .shadow(color: .black.opacity(0.6), radius: 6, x: 0, y: 2)
 
-            // Overview
             if !movie.overview.isEmpty {
                 Text(movie.overview)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.white.opacity(0.8))
-                    .lineLimit(3)
-                    .lineSpacing(3)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(.white.opacity(0.85))
+                    .lineLimit(2)
+                    .lineSpacing(4)
+                    .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 1)
             }
-
-            // Modern swipe hint
-            modernSwipeHint
-                .padding(.top, 8)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
+        .padding(.horizontal, 24)
+        .padding(.top, 24)
         .padding(.bottom, 28)
     }
 
@@ -459,165 +431,34 @@ struct SwipeCard: View {
         )
     }
 
-    // MARK: - Modern Swipe Hint
-
-    private var modernSwipeHint: some View {
-        HStack(spacing: 0) {
-            // Skip hint
-            HStack(spacing: 6) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 10, weight: .bold))
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-            }
-            .foregroundColor(.swipeSkip.opacity(0.7))
-
-            Spacer()
-
-            // Center drag indicator
-            VStack(spacing: 4) {
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.swipeWatchLater.opacity(0.6))
-
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white.opacity(0.25))
-                    .frame(width: 36, height: 4)
-            }
-
-            Spacer()
-
-            // Like hint
-            HStack(spacing: 6) {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-            }
-            .foregroundColor(.swipeLove.opacity(0.7))
-        }
-        .padding(.horizontal, 8)
-    }
-
-    // MARK: - Metadata Chip
-
-    private func metadataChip(icon: String, text: String) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .medium))
-            Text(text)
-                .font(.system(size: 13, weight: .medium))
-        }
-        .foregroundColor(.white.opacity(0.75))
-    }
-
-    // MARK: - Genre Pill
-
-    private func genrePill(_ genre: String) -> some View {
-        Text(genre)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(.white.opacity(0.95))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(.white.opacity(0.15))
-                    .background(
-                        Capsule()
-                            .fill(.ultraThinMaterial)
-                    )
-            )
-            .overlay(
-                Capsule()
-                    .stroke(.white.opacity(0.2), lineWidth: 0.5)
-            )
-    }
-
     // MARK: - Swipe Indicator Overlay
 
     private var swipeIndicatorOverlay: some View {
         ZStack {
-            // Direction indicators
             if let indicator = swipeIndicator {
                 swipeDirectionIndicator(indicator)
-                    .transition(.scale.combined(with: .opacity))
             }
-
-            // Edge glow effect
-            edgeGlowEffect
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: swipeIndicator)
+        .animation(.easeOut(duration: 0.15), value: swipeIndicator)
     }
 
     private func swipeDirectionIndicator(_ direction: SwipeDirection) -> some View {
-        VStack(spacing: 12) {
-            // Modern pill indicator with icon
-            HStack(spacing: 10) {
-                Image(systemName: direction.icon)
-                    .font(.system(size: 28, weight: .bold))
-
-                Text(direction.label)
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 28)
-            .padding(.vertical, 18)
+        Text(direction.label)
+            .font(.system(size: 42, weight: .black, design: .rounded))
+            .tracking(4)
+            .foregroundColor(direction.color)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
             .background(
-                Capsule()
-                    .fill(direction.color)
-                    .shadow(color: direction.color, radius: 20, x: 0, y: 0)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(direction.color, lineWidth: 4)
             )
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.3), lineWidth: 2)
-            )
-        }
-        .scaleEffect(0.7 + (swipeProgress * 0.5))
-        .opacity(Double(swipeProgress * 1.2).clamped(to: 0...1))
-        .rotation3DEffect(
-            .degrees(direction == .left ? -5 : (direction == .right ? 5 : 0)),
-            axis: (x: 0, y: 1, z: 0)
-        )
+            .rotationEffect(.degrees(direction == .left ? -15 : (direction == .right ? 15 : 0)))
+            .opacity(Double(swipeProgress * 1.5).clamped(to: 0...1))
+            .scaleEffect(0.8 + (swipeProgress * 0.3))
     }
 
-    private var edgeGlowEffect: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Left edge glow (skip)
-                if offset.width < 0 {
-                    LinearGradient(
-                        colors: [SwipeDirection.left.color.opacity(0.4 * swipeProgress), .clear],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .frame(width: 100)
-                    .position(x: 50, y: geometry.size.height / 2)
-                }
 
-                // Right edge glow (like)
-                if offset.width > 0 {
-                    LinearGradient(
-                        colors: [.clear, SwipeDirection.right.color.opacity(0.4 * swipeProgress)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .frame(width: 100)
-                    .position(x: geometry.size.width - 50, y: geometry.size.height / 2)
-                }
-
-                // Top edge glow (watch later)
-                if offset.height < 0 {
-                    LinearGradient(
-                        colors: [SwipeDirection.up.color.opacity(0.4 * swipeProgress), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 100)
-                    .position(x: geometry.size.width / 2, y: 50)
-                }
-            }
-        }
-    }
 
     // MARK: - Glow Color
 
@@ -639,19 +480,20 @@ struct SwipeCard: View {
             }
             .onChanged { gesture in
                 offset = gesture.translation
-                rotation = Double(gesture.translation.width / 25).clamped(to: -maxRotation...maxRotation)
+                rotation = Double(gesture.translation.width / 20).clamped(to: -maxRotation...maxRotation)
                 glowOpacity = Double(swipeProgress)
             }
             .onEnded { gesture in
                 let direction: SwipeDirection?
+                let velocity = gesture.predictedEndTranslation
 
-                if gesture.translation.width > swipeThreshold {
+                if gesture.translation.width > swipeThreshold || velocity.width > 300 {
                     direction = .right
                     Haptics.shared.swipeRight()
-                } else if gesture.translation.width < -swipeThreshold {
+                } else if gesture.translation.width < -swipeThreshold || velocity.width < -300 {
                     direction = .left
                     Haptics.shared.swipeLeft()
-                } else if gesture.translation.height < -swipeThreshold {
+                } else if gesture.translation.height < -swipeThreshold || velocity.height < -300 {
                     direction = .up
                     Haptics.shared.superLike()
                 } else {
@@ -659,32 +501,28 @@ struct SwipeCard: View {
                 }
 
                 if let direction = direction {
-                    // Success haptic
                     Haptics.shared.success()
 
-                    // Animate card off screen
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    withAnimation(.easeOut(duration: 0.25)) {
                         switch direction {
                         case .left:
-                            offset = CGSize(width: -600, height: gesture.translation.height)
-                            rotation = -20
+                            offset = CGSize(width: -500, height: gesture.translation.height)
+                            rotation = -15
                         case .right:
-                            offset = CGSize(width: 600, height: gesture.translation.height)
-                            rotation = 20
+                            offset = CGSize(width: 500, height: gesture.translation.height)
+                            rotation = 15
                         case .up:
-                            offset = CGSize(width: gesture.translation.width, height: -900)
+                            offset = CGSize(width: gesture.translation.width * 0.5, height: -600)
                             rotation = 0
                         }
-                        glowOpacity = 0
+                        cardOpacity = 0
                     }
 
-                    // Notify parent
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         onSwipe(direction)
                     }
                 } else {
-                    // Reset with bounce
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                         offset = .zero
                         rotation = 0
                         glowOpacity = 0

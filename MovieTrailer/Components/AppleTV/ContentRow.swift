@@ -207,7 +207,7 @@ struct ContentRow: View {
                     ForEach(movies) { movie in
                         PremiumPosterCard(
                             movie: movie,
-                            size: .medium,
+                            size: .standard,
                             onTap: { onMovieTap(movie) }
                         )
                     }
@@ -618,143 +618,6 @@ struct PremiumSectionHeader: View {
     }
 }
 
-// MARK: - Premium Poster Card
-
-struct PremiumPosterCard: View {
-
-    enum CardSize {
-        case small   // 100 x 150
-        case medium  // 130 x 195
-        case large   // 160 x 240
-
-        var width: CGFloat {
-            switch self {
-            case .small: return 100
-            case .medium: return 130
-            case .large: return 160
-            }
-        }
-
-        var height: CGFloat {
-            width * 1.5
-        }
-
-        var cornerRadius: CGFloat {
-            switch self {
-            case .small: return 8
-            case .medium: return 10
-            case .large: return 12
-            }
-        }
-
-        var titleFont: Font {
-            switch self {
-            case .small: return .caption2.weight(.medium)
-            case .medium: return .caption.weight(.medium)
-            case .large: return .subheadline.weight(.medium)
-            }
-        }
-    }
-
-    let movie: Movie
-    let size: CardSize
-    let showTitle: Bool
-    let onTap: () -> Void
-
-    @State private var isPressed = false
-
-    init(
-        movie: Movie,
-        size: CardSize = .medium,
-        showTitle: Bool = true,
-        onTap: @escaping () -> Void
-    ) {
-        self.movie = movie
-        self.size = size
-        self.showTitle = showTitle
-        self.onTap = onTap
-    }
-
-    var body: some View {
-        Button(action: {
-            Haptics.shared.cardTapped()
-            onTap()
-        }) {
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                // Poster
-                ZStack(alignment: .topTrailing) {
-                    KFImage(movie.posterURL)
-                        .placeholder {
-                            Rectangle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.surfacePrimary, Color.surfaceSecondary],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shimmer(isActive: true)
-                        }
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: size.width, height: size.height)
-
-                    // Rating badge for large size
-                    if size == .large && movie.voteAverage > 0 {
-                        HStack(spacing: 2) {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 8))
-                                .foregroundColor(.ratingStar)
-                            Text(movie.formattedRating)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                        .padding(6)
-                    }
-                }
-                .frame(width: size.width, height: size.height)
-                .clipShape(RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
-                        .stroke(Color.glassBorder, lineWidth: 0.5)
-                )
-                .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 4)
-
-                // Title
-                if showTitle {
-                    Text(movie.title)
-                        .font(size.titleFont)
-                        .foregroundColor(.textPrimary)
-                        .lineLimit(2)
-                        .truncationMode(.tail)
-                        .frame(width: size.width, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .scaleEffect(isPressed ? 0.96 : 1.0)
-            .animation(AppTheme.Animation.quick, value: isPressed)
-        }
-        .buttonStyle(PressableCardStyle(isPressed: $isPressed))
-    }
-}
-
-// MARK: - Pressable Card Style
-
-struct PressableCardStyle: ButtonStyle {
-    @Binding var isPressed: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .onChange(of: configuration.isPressed) { _, newValue in
-                isPressed = newValue
-            }
-    }
-}
-
 // MARK: - Shimmer Effect
 
 extension View {
@@ -797,6 +660,19 @@ struct ShimmerModifier: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+// MARK: - Pressable Card Button Style
+
+struct PressableCardStyle: ButtonStyle {
+    @Binding var isPressed: Bool
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .onChange(of: configuration.isPressed) { _, newValue in
+                isPressed = newValue
+            }
     }
 }
 

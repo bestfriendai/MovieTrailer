@@ -92,6 +92,10 @@ enum AppError: LocalizedError, Equatable {
 
     // MARK: - UI Properties
 
+    var canRetry: Bool {
+        recoveryAction == .retry || recoveryAction == .waitAndRetry
+    }
+
     var icon: String {
         switch self {
         case .network:
@@ -309,9 +313,9 @@ struct InlineErrorBanner: View {
     }
 }
 
-// MARK: - Empty State View
+// MARK: - Simple Empty State View
 
-struct EmptyStateView: View {
+struct SimpleEmptyStateView: View {
     let title: String
     let message: String
     let icon: String
@@ -464,11 +468,12 @@ struct AppError_Previews: PreviewProvider {
                 .padding(.horizontal)
 
                 EmptyStateView(
-                    title: "No Results",
-                    message: "Try searching for something else",
                     icon: "magnifyingglass",
-                    actionTitle: "Clear Search"
-                ) {}
+                    title: "No Results",
+                    message: "Try searching for something else"
+                ) {
+                    Button("Clear Search") {}
+                }
             }
         }
         .preferredColorScheme(.dark)

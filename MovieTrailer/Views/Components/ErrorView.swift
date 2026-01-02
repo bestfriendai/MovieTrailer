@@ -155,7 +155,7 @@ extension EmptyStateView where Actions == EmptyView {
 struct ErrorView_Previews: PreviewProvider {
     static var previews: some View {
         ErrorView(
-            error: .networkError(NSError(domain: "", code: 0)),
+            error: .networkError("Network unavailable"),
             onRetry: {}
         )
     }

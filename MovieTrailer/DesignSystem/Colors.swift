@@ -326,13 +326,16 @@ extension Color {
         )
     }
 
-    /// Get hex string from color
     var hexString: String {
         let components = UIColor(self).cgColor.components ?? [0, 0, 0]
         let r = Int(components[0] * 255)
         let g = Int(components[1] * 255)
         let b = Int(components[2] * 255)
         return String(format: "#%02X%02X%02X", r, g, b)
+    }
+    
+    func toHex() -> String? {
+        hexString
     }
 }
 

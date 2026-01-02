@@ -49,17 +49,8 @@ struct MovieSwipeView: View {
             Color.appBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header with title
-                headerView
-
-                if hasPersonalization {
-                    personalizationChips
-                        .padding(.top, 12)
-                }
-
-                // Filter chips
-                filterChips
-                    .padding(.top, 12)
+                // Compact header
+                compactHeaderView
 
                 // Main content
                 if viewModel.isLoading && viewModel.movieQueue.isEmpty {
@@ -69,11 +60,11 @@ struct MovieSwipeView: View {
                 } else if filteredCurrentMovie == nil {
                     emptyStateView
                 } else {
-                    // Card stack
+                    // Card stack - takes most of the screen
                     cardStackView
-                        .padding(.top, 16)
+                        .padding(.top, 8)
 
-                    Spacer(minLength: 16)
+                    Spacer(minLength: 8)
 
                     // Action buttons
                     actionButtonsView
@@ -139,41 +130,47 @@ struct MovieSwipeView: View {
         return viewModel.movieQueue.firstIndex(where: { $0.id == movie.id })
     }
 
-    // MARK: - Header
-
-    private var headerView: some View {
+    private var compactHeaderView: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Discover")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.textPrimary)
+            Text("Discover")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundColor(.textPrimary)
 
-                Text("\(viewModel.remainingCount) movies to explore")
-                    .font(.subheadline)
-                    .foregroundColor(.textSecondary)
-            }
+            Text("•")
+                .foregroundColor(.textTertiary)
+
+            Text("\(viewModel.remainingCount) left")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.textSecondary)
 
             Spacer()
 
-            // Stats button with glass effect
-            Button {
-                Haptics.shared.lightImpact()
-                viewModel.showStats = true
-            } label: {
-                Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.textPrimary)
-                    .frame(width: 48, height: 48)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                    )
+            HStack(spacing: 12) {
+                Button {
+                    Haptics.shared.lightImpact()
+                    showingFilters = true
+                } label: {
+                    Image(systemName: hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(hasActiveFilters ? .accentPrimary : .textSecondary)
+                }
+
+                Button {
+                    Haptics.shared.lightImpact()
+                    viewModel.showStats = true
+                } label: {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.textSecondary)
+                }
             }
         }
         .padding(.horizontal, Spacing.horizontal)
-        .padding(.top, Spacing.sm)
+        .padding(.vertical, 12)
+    }
+
+    private var hasActiveFilters: Bool {
+        selectedGenre != nil || selectedYear != nil || minRating > 0
     }
 
     // MARK: - Filter Chips
@@ -292,29 +289,30 @@ struct MovieSwipeView: View {
     }
 
     private var cardStackView: some View {
-        ZStack {
-            // Background cards for depth effect (show up to 2 behind)
-            ForEach(Array(upcomingMovies.prefix(2).reversed().enumerated()), id: \.element.id) { index, movie in
-                let depth = upcomingMovies.prefix(2).count - 1 - index
-                movieCard(for: movie, isTopCard: false)
-                    .scaleEffect(0.88 - (CGFloat(depth) * 0.04))
-                    .offset(y: CGFloat(depth + 1) * -12)
-                    .opacity(0.4 - (Double(depth) * 0.15))
-                    .blur(radius: CGFloat(depth) * 0.5)
-                    .allowsHitTesting(false)
-            }
+        GeometryReader { geometry in
+            ZStack {
+                ForEach(Array(upcomingMovies.prefix(2).reversed().enumerated()), id: \.element.id) { index, movie in
+                    let depth = upcomingMovies.prefix(2).count - 1 - index
+                    movieCard(for: movie, isTopCard: false)
+                        .scaleEffect(0.92 - (CGFloat(depth) * 0.03))
+                        .offset(y: CGFloat(depth + 1) * -10)
+                        .opacity(0.5 - (Double(depth) * 0.2))
+                        .blur(radius: CGFloat(depth) * 0.3)
+                        .allowsHitTesting(false)
+                }
 
-            // Current card
-            if let movie = filteredCurrentMovie {
-                movieCard(for: movie, isTopCard: true)
-                    .id(movie.id)
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.9).combined(with: .opacity),
-                        removal: .identity
-                    ))
+                if let movie = filteredCurrentMovie {
+                    movieCard(for: movie, isTopCard: true)
+                        .id(movie.id)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.85).combined(with: .opacity).combined(with: .offset(y: 50)),
+                            removal: .identity
+                        ))
+                }
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
     }
 
     private func movieCard(for movie: Movie, isTopCard: Bool) -> some View {
@@ -351,72 +349,39 @@ struct MovieSwipeView: View {
     // MARK: - Action Buttons
 
     private var actionButtonsView: some View {
-        HStack(spacing: 0) {
-            // Undo - small secondary button
-            SmallActionButton(
-                icon: "arrow.uturn.backward",
-                isEnabled: viewModel.currentIndex > 0
+        HStack(spacing: 20) {
+            Spacer()
+
+            CleanActionButton(
+                icon: "xmark",
+                color: .swipeSkip,
+                size: 64
             ) {
-                guard viewModel.currentIndex > 0 else { return }
-                Haptics.shared.lightImpact()
-                viewModel.undo()
+                Haptics.shared.mediumImpact()
+                viewModel.skip()
+            }
+
+            CleanActionButton(
+                icon: "bookmark.fill",
+                color: .swipeWatchLater,
+                size: 56
+            ) {
+                Haptics.shared.mediumImpact()
+                viewModel.watchLater()
+            }
+
+            CleanActionButton(
+                icon: "heart.fill",
+                color: .swipeLove,
+                size: 64
+            ) {
+                Haptics.shared.success()
+                viewModel.like()
             }
 
             Spacer()
-
-            // Main action buttons
-            HStack(spacing: 16) {
-                // Skip (X)
-                MainActionButton(
-                    icon: "xmark",
-                    color: .swipeSkip,
-                    size: 60
-                ) {
-                    Haptics.shared.mediumImpact()
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                        viewModel.skip()
-                    }
-                }
-
-                // Save for later - elevated center
-                MainActionButton(
-                    icon: "bookmark.fill",
-                    color: .swipeWatchLater,
-                    size: 52
-                ) {
-                    Haptics.shared.mediumImpact()
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                        viewModel.watchLater()
-                    }
-                }
-
-                // Love
-                MainActionButton(
-                    icon: "heart.fill",
-                    color: .swipeLove,
-                    size: 60
-                ) {
-                    Haptics.shared.success()
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                        viewModel.like()
-                    }
-                }
-            }
-
-            Spacer()
-
-            // Play trailer - small secondary button
-            SmallActionButton(
-                icon: "play.fill",
-                isEnabled: filteredCurrentMovie != nil
-            ) {
-                Haptics.shared.lightImpact()
-                if let movie = filteredCurrentMovie {
-                    onPlayTrailer?(movie)
-                }
-            }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 32)
     }
 
     // MARK: - Filter Sheet
@@ -893,9 +858,7 @@ struct FilterChip: View {
     }
 }
 
-// MARK: - Main Action Button (Skip, Save, Love)
-
-struct MainActionButton: View {
+struct CleanActionButton: View {
     let icon: String
     let color: Color
     let size: CGFloat
@@ -906,91 +869,22 @@ struct MainActionButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                // Outer glow ring
-                Circle()
-                    .fill(color.opacity(0.15))
-                    .frame(width: size + 16, height: size + 16)
-                    .blur(radius: 12)
-
-                // Main circle with gradient
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                color.opacity(0.25),
-                                color.opacity(0.1)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: size, height: size)
-
-                // Glass overlay
                 Circle()
                     .fill(.ultraThinMaterial)
                     .frame(width: size, height: size)
-                    .opacity(0.4)
 
-                // Border with gradient
                 Circle()
-                    .stroke(
-                        LinearGradient(
-                            colors: [color.opacity(0.6), color.opacity(0.2)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 2.5
-                    )
+                    .stroke(color.opacity(0.4), lineWidth: 2)
                     .frame(width: size, height: size)
 
-                // Icon
                 Image(systemName: icon)
-                    .font(.system(size: size * 0.4, weight: .bold))
+                    .font(.system(size: size * 0.38, weight: .semibold))
                     .foregroundColor(color)
             }
-            .shadow(color: color.opacity(0.5), radius: 16, x: 0, y: 6)
-            .scaleEffect(isPressed ? 0.85 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isPressed)
+            .scaleEffect(isPressed ? 0.9 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
-    }
-}
-
-// MARK: - Small Action Button (Undo, Play)
-
-struct SmallActionButton: View {
-    let icon: String
-    var isEnabled: Bool = true
-    let action: () -> Void
-
-    @State private var isPressed = false
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 44, height: 44)
-
-                Circle()
-                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white.opacity(isEnabled ? 0.9 : 0.3))
-            }
-            .scaleEffect(isPressed ? 0.85 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isPressed)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in isPressed = true }
