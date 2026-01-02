@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Typography Extensions
 
@@ -349,12 +352,58 @@ extension Text {
 // MARK: - Dynamic Type Support
 
 extension Font {
-
-    /// Creates a scaled font that respects Dynamic Type
-    static func scaled(_ style: Font.TextStyle, size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        return Font.system(size: size, weight: weight, design: .default)
+    
+    static func scaledSystem(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default, relativeTo textStyle: Font.TextStyle = .body) -> Font {
+        Font.system(size: size, weight: weight, design: design).dynamicTypeSize(relativeTo: textStyle)
     }
 }
+
+extension Font {
+    func dynamicTypeSize(relativeTo textStyle: Font.TextStyle) -> Font {
+        self
+    }
+}
+
+#if canImport(UIKit)
+struct ScaledFont: ViewModifier {
+    @Environment(\.sizeCategory) var sizeCategory
+    
+    let size: CGFloat
+    let weight: Font.Weight
+    let design: Font.Design
+    let relativeTo: Font.TextStyle
+    
+    func body(content: Content) -> some View {
+        let scaledSize = UIFontMetrics(forTextStyle: mapToUIFontTextStyle(relativeTo)).scaledValue(for: size)
+        return content.font(.system(size: scaledSize, weight: weight, design: design))
+    }
+    
+    private func mapToUIFontTextStyle(_ style: Font.TextStyle) -> UIFont.TextStyle {
+        switch style {
+        case .largeTitle: return .largeTitle
+        case .title: return .title1
+        case .title2: return .title2
+        case .title3: return .title3
+        case .headline: return .headline
+        case .subheadline: return .subheadline
+        case .body: return .body
+        case .callout: return .callout
+        case .footnote: return .footnote
+        case .caption: return .caption1
+        case .caption2: return .caption2
+        @unknown default: return .body
+        }
+    }
+}
+#endif
+
+#if canImport(UIKit)
+extension View {
+    func scaledFont(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default, relativeTo: Font.TextStyle = .body) -> some View {
+        self.modifier(ScaledFont(size: size, weight: weight, design: design, relativeTo: relativeTo))
+    }
+}
+#endif
 
 // MARK: - Text Gradient
 

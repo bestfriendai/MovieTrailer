@@ -379,8 +379,9 @@ struct SearchView: View {
                 ], spacing: 10) {
                     ForEach(StreamingProvider.featured) { provider in
                         StreamingProviderCard(provider: provider) {
-                            viewModel.searchQuery = provider.searchQuery
-                            viewModel.search()
+                            Task {
+                                await viewModel.fetchByStreamingProvider(provider.id, providerName: provider.shortName)
+                            }
                         }
                     }
                 }

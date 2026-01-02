@@ -428,6 +428,7 @@ struct DiscoverFilters {
     var voteAverageMin: Double? = nil
     var voteAverageMax: Double? = nil
     var voteCountMin: Int? = nil
+    var voteCountMax: Int? = nil
     var runtimeMin: Int? = nil
     var runtimeMax: Int? = nil
     var withCast: [Int]? = nil
@@ -501,6 +502,9 @@ struct DiscoverFilters {
         }
         if let voteCountMin = voteCountMin {
             items.append(URLQueryItem(name: "vote_count.gte", value: "\(voteCountMin)"))
+        }
+        if let voteCountMax = voteCountMax {
+            items.append(URLQueryItem(name: "vote_count.lte", value: "\(voteCountMax)"))
         }
         if let runtimeMin = runtimeMin {
             items.append(URLQueryItem(name: "with_runtime.gte", value: "\(runtimeMin)"))
@@ -584,7 +588,7 @@ struct DiscoverFilters {
         filters.sortBy = .voteAverageDesc
         filters.voteAverageMin = 7.5
         filters.voteCountMin = 100
-        filters.voteCountMin = 500
+        filters.voteCountMax = 500
         return filters
     }
 

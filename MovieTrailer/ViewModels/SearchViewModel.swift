@@ -207,6 +207,30 @@ final class SearchViewModel: ObservableObject {
         }
     }
 
+    /// Fetch movies available on a streaming provider using TMDB discover API
+    func fetchByStreamingProvider(_ providerId: Int, providerName: String) async {
+        isSearching = true
+        error = nil
+        searchQuery = providerName
+
+        do {
+            var filters = DiscoverFilters()
+            filters.withWatchProviders = [providerId]
+            filters.watchRegion = "US"
+            filters.sortBy = .popularityDesc
+            
+            let response = try await tmdbService.discoverMovies(filters: filters)
+            searchResults = response.results
+            isSearching = false
+        } catch let networkError as NetworkError {
+            error = networkError
+            isSearching = false
+        } catch {
+            self.error = .unknown
+            isSearching = false
+        }
+    }
+
     /// Check if movie is in watchlist
     func isInWatchlist(_ movie: Movie) -> Bool {
         watchlistManager.contains(movie)

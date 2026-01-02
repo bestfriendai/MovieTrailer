@@ -218,10 +218,10 @@ private struct CompactListShareView: View {
             
             // Movie List
             VStack(spacing: 16) {
-                ForEach(items) { item in
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     HStack(spacing: 16) {
                         // Rank
-                        Text("\(items.firstIndex(where: { $0.id == item.id })! + 1)")
+                        Text("\(index + 1)")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundColor(.secondary)
                             .frame(width: 40)

@@ -113,8 +113,9 @@ actor OfflineMovieCache {
             if categoryIndex[category] == nil {
                 categoryIndex[category] = []
             }
-            if !categoryIndex[category]!.contains(movie.id) {
-                categoryIndex[category]!.append(movie.id)
+            if var ids = categoryIndex[category], !ids.contains(movie.id) {
+                ids.append(movie.id)
+                categoryIndex[category] = ids
             }
         }
 

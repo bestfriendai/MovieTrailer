@@ -242,13 +242,11 @@ extension ImagePrefetcher {
 // MARK: - View Extension for Easy Prefetching
 
 extension View {
-    /// Prefetch images when view appears
     func prefetchImages(_ urls: [URL], key: String) -> some View {
         self.onAppear {
-            ImageCacheManager.shared.prefetchForRow(
-                movies: [], // This needs to be movies
-                rowKey: key
-            )
+            guard !urls.isEmpty else { return }
+            let kfPrefetcher = Kingfisher.ImagePrefetcher(urls: urls)
+            kfPrefetcher.start()
         }
         .onDisappear {
             ImageCacheManager.shared.cancelPrefetch(key: key)

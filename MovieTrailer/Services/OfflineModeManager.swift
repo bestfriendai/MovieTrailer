@@ -9,17 +9,15 @@ import Combine
 @MainActor
 final class OfflineModeManager: ObservableObject {
     
-    // MARK: - Published Properties
-    
     @Published var isOffline = false
     @Published var cachedCategories: Set<String> = []
     @Published var lastSyncDate: Date?
     @Published var downloadProgress: Double = 0
     @Published var isDownloading = false
     
-    // MARK: - Dependencies
-    
     private let networkMonitor: NetworkMonitor
+    private let tmdbService: TMDBService
+    private let movieCache: OfflineMovieCache
     private var cancellables = Set<AnyCancellable>()
     
     var offlineCapabilityMessage: String {
@@ -34,10 +32,14 @@ final class OfflineModeManager: ObservableObject {
         !cachedCategories.isEmpty
     }
     
-    // MARK: - Initialization
-    
-    init(networkMonitor: NetworkMonitor = .shared) {
+    init(
+        networkMonitor: NetworkMonitor = .shared,
+        tmdbService: TMDBService = .shared,
+        movieCache: OfflineMovieCache = .shared
+    ) {
         self.networkMonitor = networkMonitor
+        self.tmdbService = tmdbService
+        self.movieCache = movieCache
         
         observeNetworkStatus()
         loadCachedStatus()
@@ -80,7 +82,36 @@ final class OfflineModeManager: ObservableObject {
     }
     
     private func downloadCategory(_ category: String) async throws {
-        try await Task.sleep(nanoseconds: 500_000_000)
+        let cacheCategory = mapToCacheCategory(category)
+        
+        let response: MovieResponse
+        switch category.lowercased() {
+        case "trending":
+            response = try await tmdbService.fetchTrending(page: 1)
+        case "popular":
+            response = try await tmdbService.fetchPopular(page: 1)
+        case "top rated", "toprated":
+            response = try await tmdbService.fetchTopRated(page: 1)
+        case "now playing", "nowplaying":
+            response = try await tmdbService.fetchNowPlaying(page: 1)
+        case "upcoming":
+            response = try await tmdbService.fetchUpcoming(page: 1)
+        default:
+            response = try await tmdbService.fetchPopular(page: 1)
+        }
+        
+        await movieCache.cacheMovies(response.results, category: cacheCategory)
+    }
+    
+    private func mapToCacheCategory(_ category: String) -> CacheCategory {
+        switch category.lowercased() {
+        case "trending": return .trending
+        case "popular": return .popular
+        case "top rated", "toprated": return .topRated
+        case "now playing", "nowplaying": return .nowPlaying
+        case "upcoming": return .upcoming
+        default: return .popular
+        }
     }
     
     // MARK: - Clear Offline Data
